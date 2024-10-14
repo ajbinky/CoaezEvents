@@ -26,6 +26,7 @@ public class CoaezHalloweenEventGraphicsContext extends ScriptGraphicsContext {
             config.addProperty("lastActivityState", coaezHalloweenEvent.lastActivityState.toString());
             config.addProperty("identifyAncientRemains", String.valueOf(coaezHalloweenEvent.identifyAncientRemains));
             config.addProperty("chaseSprite", String.valueOf(coaezHalloweenEvent.chaseSprite));
+            config.addProperty("ancientRemainsCount", String.valueOf(coaezHalloweenEvent.ancientRemainsCount));
             config.save();
         }
     }
@@ -35,6 +36,11 @@ public class CoaezHalloweenEventGraphicsContext extends ScriptGraphicsContext {
 
         if (config != null) {
             config.load();
+
+            String ancientRemainsCount = config.getProperty("ancientRemainsCount");
+            if (ancientRemainsCount != null) {
+                coaezHalloweenEvent.ancientRemainsCount = Integer.parseInt(ancientRemainsCount);
+            }
 
             String botStateValue = config.getProperty("botState");
             if (botStateValue != null) {
@@ -89,6 +95,10 @@ public class CoaezHalloweenEventGraphicsContext extends ScriptGraphicsContext {
             }
 
             coaezHalloweenEvent.identifyAncientRemains = ImGui.Checkbox("Identify ancient remains", coaezHalloweenEvent.identifyAncientRemains);
+            ImGui.SameLine();
+            ImGui.SetItemWidth(100);
+            coaezHalloweenEvent.ancientRemainsCount = ImGui.InputInt("How much remains before we identify", coaezHalloweenEvent.ancientRemainsCount);
+
             coaezHalloweenEvent.chaseSprite = ImGui.Checkbox("Chase sprite during archeology", coaezHalloweenEvent.chaseSprite);
 
             ImGui.End();

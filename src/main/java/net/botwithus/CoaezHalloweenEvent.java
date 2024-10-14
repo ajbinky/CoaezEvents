@@ -58,6 +58,7 @@ public class CoaezHalloweenEvent extends LoopingScript {
     private long lastAnimationChangeTime = 0;
     private int lastAnimationId = -1;
     public boolean chaseSprite;
+    public int ancientRemainsCount = 27;
 
     public CoaezHalloweenEvent(String s, ScriptConfig config, ScriptDefinition scriptDefinition) {
         super(s, config, scriptDefinition);
@@ -110,6 +111,21 @@ public class CoaezHalloweenEvent extends LoopingScript {
     }
 
     private void handleThieving(Player player) {
+
+        if(Backpack.contains("Ancient remains", ancientRemainsCount) && identifyAncientRemains){
+            Backpack.interact("Ancient remains", "Identify all");
+        }
+
+        if (backpackContainsCollectionItems()) {
+            handleCollectionSubmission();
+            return;
+        }
+
+        if (backpackContainsSecondCollectionItems()) {
+            handleSecondCollectionSubmission();
+            return;
+        }
+
         int currentAnimationId = player.getAnimationId();
 
         if (currentAnimationId != lastAnimationId) {
@@ -166,6 +182,21 @@ public class CoaezHalloweenEvent extends LoopingScript {
             println("Moving to summoning area");
             moveTo(summoningArea.getRandomWalkableCoordinate());
         }
+
+        if(Backpack.contains("Ancient remains", ancientRemainsCount) && identifyAncientRemains){
+            Backpack.interact("Ancient remains", "Identify all");
+        }
+
+        if (backpackContainsCollectionItems()) {
+            handleCollectionSubmission();
+            return;
+        }
+
+        if (backpackContainsSecondCollectionItems()) {
+            handleSecondCollectionSubmission();
+            return;
+        }
+
         EntityResultSet<SceneObject> unlitCandleResults = SceneObjectQuery.newQuery()
                 .name("Candle")
                 .option("Light")
@@ -213,7 +244,7 @@ public class CoaezHalloweenEvent extends LoopingScript {
             MiniMenu.interact(ComponentAction.DIALOGUE.getType(), 0, -1, 77922323);
         }
 
-        if(Backpack.contains("Ancient remains", 27) && identifyAncientRemains){
+        if(Backpack.contains("Ancient remains", ancientRemainsCount) && identifyAncientRemains){
             Backpack.interact("Ancient remains", "Identify all");
         }
 
@@ -236,7 +267,7 @@ public class CoaezHalloweenEvent extends LoopingScript {
                 return;
             }
             if (bankArea.contains(player.getCoordinate())) {
-                println("Player is in the bank area, loading last preset...");
+                println("Player is in the bank area, opening the bank...");
                 Bank.open();
                 Execution.delayUntil(10000, Bank::isOpen);
                 if(Bank.isOpen()){
