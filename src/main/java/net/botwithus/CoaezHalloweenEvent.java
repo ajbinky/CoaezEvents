@@ -59,6 +59,7 @@ public class CoaezHalloweenEvent extends LoopingScript {
     private int lastAnimationId = -1;
     public boolean chaseSprite;
     public int ancientRemainsCount = 27;
+    public int thievingDelay = 10;
 
     public CoaezHalloweenEvent(String s, ScriptConfig config, ScriptDefinition scriptDefinition) {
         super(s, config, scriptDefinition);
@@ -121,6 +122,28 @@ public class CoaezHalloweenEvent extends LoopingScript {
             return;
         }
 
+        if (Backpack.isFull()) {
+            println("Backpack is full. Moving to bank to deposit.");
+            if (!bankArea.contains(player.getCoordinate())) {
+                println("Player is not in the bank area, moving to bank...");
+                Movement.walkTo(bankLocation.getX(), bankLocation.getY(), true);
+                Execution.delay(random.nextLong(6000, 10000));
+                return;
+            }
+            if (bankArea.contains(player.getCoordinate())) {
+                println("Player is in the bank area, opening the bank...");
+                Bank.open();
+                Execution.delayUntil(10000, Bank::isOpen);
+                if(Bank.isOpen()){
+                    Execution.delay(random.nextLong(1000, 2000));
+                    Bank.depositAllExcept("Complete tome");
+                    Bank.close();
+                    return;
+                }
+            }
+            return;
+        }
+
         int currentAnimationId = player.getAnimationId();
 
         if (currentAnimationId != lastAnimationId) {
@@ -129,7 +152,7 @@ public class CoaezHalloweenEvent extends LoopingScript {
         }
 
         // Check if the animation has stayed the same for at least 5 seconds
-        if (System.currentTimeMillis() - lastAnimationChangeTime >= 5000) {
+        if (System.currentTimeMillis() - lastAnimationChangeTime >= thievingDelay) {
             if (currentAnimationId == -1) {
                 EntityResultSet<SceneObject> lootableObjects = SceneObjectQuery.newQuery()
                         .option("Loot")
@@ -164,8 +187,7 @@ public class CoaezHalloweenEvent extends LoopingScript {
                 }
             }
         } else {
-            println("Waiting for the animation...");
-            Execution.delay(random.nextLong(100, 200));
+            Execution.delay(random.nextLong(600, 1200));
         }
     }
 
@@ -184,6 +206,28 @@ public class CoaezHalloweenEvent extends LoopingScript {
 
         if (backpackContainsSecondCollectionItems()) {
             handleSecondCollectionSubmission();
+            return;
+        }
+
+        if (Backpack.isFull()) {
+            println("Backpack is full. Moving to bank to load the last preset.");
+            if (!bankArea.contains(player.getCoordinate())) {
+                println("Player is not in the bank area, moving to bank...");
+                Movement.walkTo(bankLocation.getX(), bankLocation.getY(), true);
+                Execution.delay(random.nextLong(6000, 10000));
+                return;
+            }
+            if (bankArea.contains(player.getCoordinate())) {
+                println("Player is in the bank area, opening the bank...");
+                Bank.open();
+                Execution.delayUntil(10000, Bank::isOpen);
+                if(Bank.isOpen()){
+                    Execution.delay(random.nextLong(1000, 2000));
+                    Bank.depositAllExcept("Complete tome");
+                    Bank.close();
+                    return;
+                }
+            }
             return;
         }
 
@@ -253,7 +297,7 @@ public class CoaezHalloweenEvent extends LoopingScript {
             if (!bankArea.contains(player.getCoordinate())) {
                 println("Player is not in the bank area, moving to bank...");
                 Movement.walkTo(bankLocation.getX(), bankLocation.getY(), true);
-                Execution.delay(random.nextLong(3000, 5000));
+                Execution.delay(random.nextLong(6000, 10000));
                 return;
             }
             if (bankArea.contains(player.getCoordinate())) {
@@ -380,17 +424,19 @@ public class CoaezHalloweenEvent extends LoopingScript {
 
         if (eep != null) {
             println("Interacting with NPC 'Eep'...");
-            eep.interact("Collections");
+            if(eep.interact("Collections")){
+                println("Opening collections window");
+            }
 
-            if (Execution.delayUntil(10000,() -> Interfaces.isOpen(656))) {
+            if (Execution.delayUntil(15000,() -> Interfaces.isOpen(656))) {
                 println("Interface 656 opened, switching to second collection...");
 
                 MiniMenu.interact(ComponentAction.COMPONENT.getType(), 1, 1, 42991647);  // Switch to second collection
-                Execution.delay(1000);
+                Execution.delay(random.nextLong(1200, 1800));
 
                 println("Confirming second collection contribution...");
                 MiniMenu.interact(ComponentAction.COMPONENT.getType(), 1, 0, 42991641);  // Submit collection
-                Execution.delay(1000);
+                Execution.delay(random.nextLong(1200, 1800));
 
                 println("Second collection submitted. Returning to excavation.");
             } else {

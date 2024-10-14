@@ -27,6 +27,7 @@ public class CoaezHalloweenEventGraphicsContext extends ScriptGraphicsContext {
             config.addProperty("identifyAncientRemains", String.valueOf(coaezHalloweenEvent.identifyAncientRemains));
             config.addProperty("chaseSprite", String.valueOf(coaezHalloweenEvent.chaseSprite));
             config.addProperty("ancientRemainsCount", String.valueOf(coaezHalloweenEvent.ancientRemainsCount));
+            config.addProperty("thievingDelay", String.valueOf(coaezHalloweenEvent.thievingDelay));
             config.save();
         }
     }
@@ -36,6 +37,11 @@ public class CoaezHalloweenEventGraphicsContext extends ScriptGraphicsContext {
 
         if (config != null) {
             config.load();
+
+            String thievingDelay = config.getProperty("thievingDelay");
+            if (thievingDelay != null) {
+                coaezHalloweenEvent.ancientRemainsCount = Integer.parseInt(thievingDelay);
+            }
 
             String ancientRemainsCount = config.getProperty("ancientRemainsCount");
             if (ancientRemainsCount != null) {
@@ -87,19 +93,25 @@ public class CoaezHalloweenEventGraphicsContext extends ScriptGraphicsContext {
                 coaezHalloweenEvent.lastActivityState = CoaezHalloweenEvent.BotState.THIEVING;
                 coaezHalloweenEvent.getConsole().println("Switched to Thieving spooky event.");
             }
+            ImGui.SameLine();
+            coaezHalloweenEvent.thievingDelay = ImGui.InputInt("Custom delay for thieving, recommended 5+ seconds", coaezHalloweenEvent.thievingDelay);
 
-            if (ImGui.Button("Pumpkin spooky event")) {
-                coaezHalloweenEvent.setBotState(CoaezHalloweenEvent.BotState.PUMPKIN);
-                coaezHalloweenEvent.lastActivityState = CoaezHalloweenEvent.BotState.PUMPKIN;
-                coaezHalloweenEvent.getConsole().println("Switched to Pumpkin spooky event.");
-            }
-
+            ImGui.Text("Applicable to thieving , summoning and archeology");
             coaezHalloweenEvent.identifyAncientRemains = ImGui.Checkbox("Identify ancient remains", coaezHalloweenEvent.identifyAncientRemains);
             ImGui.SameLine();
             ImGui.SetItemWidth(100);
             coaezHalloweenEvent.ancientRemainsCount = ImGui.InputInt("How much remains before we identify", coaezHalloweenEvent.ancientRemainsCount);
 
             coaezHalloweenEvent.chaseSprite = ImGui.Checkbox("Chase sprite during archeology", coaezHalloweenEvent.chaseSprite);
+
+            ImGui.Separator();
+
+            if (ImGui.Button("Pumpkin spooky event")) {
+                coaezHalloweenEvent.setBotState(CoaezHalloweenEvent.BotState.PUMPKIN);
+                coaezHalloweenEvent.lastActivityState = CoaezHalloweenEvent.BotState.PUMPKIN;
+                coaezHalloweenEvent.getConsole().println("Switched to Pumpkin spooky event.");
+            }
+            saveConfig();
 
             ImGui.End();
         }
