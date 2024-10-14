@@ -109,7 +109,6 @@ public class CoaezHalloweenEvent extends LoopingScript {
     private void handleThieving(Player player) {
         int currentAnimationId = player.getAnimationId();
 
-        // Check if the player's animation has changed
         if (currentAnimationId != lastAnimationId) {
             lastAnimationId = currentAnimationId;
             lastAnimationChangeTime = System.currentTimeMillis();
@@ -131,14 +130,31 @@ public class CoaezHalloweenEvent extends LoopingScript {
                     println("No lootable objects nearby.");
                 }
             } else {
-                println("Player is already interacting. Waiting...");
-                Execution.delay(random.nextLong(1000, 3000));
+                // Handle player 24887 case (already looting, but no animation after 5 seconds)
+                if (player.getId() == 24887) {
+                    println("No loot animation detected for 5 seconds. Searching for new loot...");
+                    EntityResultSet<SceneObject> lootableObjects = SceneObjectQuery.newQuery()
+                            .option("Loot")
+                            .results();
+                    SceneObject nearestLootable = lootableObjects.nearest();
+                    if (nearestLootable != null) {
+                        println("New lootable object found. Interacting...");
+                        nearestLootable.interact("Loot");
+                        Execution.delay(random.nextLong(2000, 4000));
+                    } else {
+                        println("No other lootable objects found.");
+                    }
+                } else {
+                    println("Player is already interacting. Waiting...");
+                    Execution.delay(random.nextLong(1000, 3000));
+                }
             }
         } else {
-            println("Waiting for the animation to stabilize...");
-            Execution.delay(random.nextLong(1000, 3000));
+            println("Waiting for the animation...");
+            Execution.delay(random.nextLong(100, 200));
         }
     }
+
 
 
     private void handleSummoning(Player player) {
