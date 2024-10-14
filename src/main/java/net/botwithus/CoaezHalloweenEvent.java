@@ -116,11 +116,6 @@ public class CoaezHalloweenEvent extends LoopingScript {
             Backpack.interact("Ancient remains", "Identify all");
         }
 
-        if (backpackContainsCollectionItems()) {
-            handleCollectionSubmission();
-            return;
-        }
-
         if (backpackContainsSecondCollectionItems()) {
             handleSecondCollectionSubmission();
             return;
@@ -185,11 +180,6 @@ public class CoaezHalloweenEvent extends LoopingScript {
 
         if(Backpack.contains("Ancient remains", ancientRemainsCount) && identifyAncientRemains){
             Backpack.interact("Ancient remains", "Identify all");
-        }
-
-        if (backpackContainsCollectionItems()) {
-            handleCollectionSubmission();
-            return;
         }
 
         if (backpackContainsSecondCollectionItems()) {
