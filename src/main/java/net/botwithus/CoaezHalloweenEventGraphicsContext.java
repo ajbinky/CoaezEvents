@@ -15,6 +15,7 @@ public class CoaezHalloweenEventGraphicsContext extends ScriptGraphicsContext {
     public CoaezHalloweenEventGraphicsContext(ScriptConsole scriptConsole, CoaezHalloweenEvent script) {
         super(scriptConsole);
         this.coaezHalloweenEvent = script;
+        loadConfig();
     }
 
     public void saveConfig() {
@@ -23,8 +24,9 @@ public class CoaezHalloweenEventGraphicsContext extends ScriptGraphicsContext {
         if (config != null) {
             config.addProperty("botState", coaezHalloweenEvent.botState.toString());
             config.addProperty("lastActivityState", coaezHalloweenEvent.lastActivityState.toString());
+            config.addProperty("identifyAncientRemains", String.valueOf(coaezHalloweenEvent.identifyAncientRemains));
+            config.addProperty("chaseSprite", String.valueOf(coaezHalloweenEvent.chaseSprite));
             config.save();
-            println("Script state saved.");
         }
     }
 
@@ -44,6 +46,15 @@ public class CoaezHalloweenEventGraphicsContext extends ScriptGraphicsContext {
                 coaezHalloweenEvent.lastActivityState = CoaezHalloweenEvent.BotState.valueOf(lastActivityStateValue);
             }
 
+            String identifyAncientRemainsValue = config.getProperty("identifyAncientRemains");
+            if (identifyAncientRemainsValue != null) {
+                coaezHalloweenEvent.identifyAncientRemains = Boolean.parseBoolean(identifyAncientRemainsValue);
+            }
+
+            String chaseSpriteValue = config.getProperty("chaseSprite");
+            if (chaseSpriteValue != null) {
+                coaezHalloweenEvent.chaseSprite = Boolean.parseBoolean(chaseSpriteValue);
+            }
 
             println("Script state loaded.");
         }
@@ -76,8 +87,9 @@ public class CoaezHalloweenEventGraphicsContext extends ScriptGraphicsContext {
                 coaezHalloweenEvent.lastActivityState = CoaezHalloweenEvent.BotState.PUMPKIN;
                 coaezHalloweenEvent.getConsole().println("Switched to Pumpkin spooky event.");
             }
-            coaezHalloweenEvent.destroyArchBook = ImGui.Checkbox("Destroy archeology book", coaezHalloweenEvent.destroyArchBook);
+
             coaezHalloweenEvent.identifyAncientRemains = ImGui.Checkbox("Identify ancient remains", coaezHalloweenEvent.identifyAncientRemains);
+            coaezHalloweenEvent.chaseSprite = ImGui.Checkbox("Chase sprite during archeology", coaezHalloweenEvent.chaseSprite);
 
             ImGui.End();
         }

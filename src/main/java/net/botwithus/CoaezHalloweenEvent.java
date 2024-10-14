@@ -57,6 +57,7 @@ public class CoaezHalloweenEvent extends LoopingScript {
     public boolean identifyAncientRemains;
     private long lastAnimationChangeTime = 0;
     private int lastAnimationId = -1;
+    public boolean chaseSprite;
 
     public CoaezHalloweenEvent(String s, ScriptConfig config, ScriptDefinition scriptDefinition) {
         super(s, config, scriptDefinition);
@@ -73,6 +74,8 @@ public class CoaezHalloweenEvent extends LoopingScript {
             Execution.delay(random.nextLong(2500, 5500));
             return;
         }
+
+        sgc.saveConfig();
 
         switch (botState) {
             case PUMPKIN:
@@ -206,10 +209,6 @@ public class CoaezHalloweenEvent extends LoopingScript {
     private void handleArchaeology(Player player) {
         println("Handling Archaeology...");
 
-        if(destroyArchBook){
-            checkAndDestroyItems();
-        }
-
         if (Interfaces.isOpen(1189)) {
             MiniMenu.interact(ComponentAction.DIALOGUE.getType(), 0, -1, 77922323);
         }
@@ -230,20 +229,23 @@ public class CoaezHalloweenEvent extends LoopingScript {
 
         if (Backpack.isFull()) {
             println("Backpack is full. Moving to bank to load the last preset.");
-
             if (!bankArea.contains(player.getCoordinate())) {
                 println("Player is not in the bank area, moving to bank...");
                 Movement.walkTo(bankLocation.getX(), bankLocation.getY(), true);
                 Execution.delay(random.nextLong(3000, 5000));
                 return;
             }
-
             if (bankArea.contains(player.getCoordinate())) {
                 println("Player is in the bank area, loading last preset...");
-                Bank.loadLastPreset();
-                Execution.delay(1000);
+                Bank.open();
+                Execution.delayUntil(10000, Bank::isOpen);
+                if(Bank.isOpen()){
+                    Execution.delay(random.nextLong(1000, 2000));
+                    Bank.depositAllExcept("Complete tome");
+                    Bank.close();
+                    return;
+                }
             }
-
             return;
         }
 
@@ -254,57 +256,67 @@ public class CoaezHalloweenEvent extends LoopingScript {
             return;
         }
 
-        EntityResultSet<SpotAnimation> spotResults = SpotAnimationQuery.newQuery()
-                .animations(7307)
-                .results();
-        SpotAnimation archaeologySpot = spotResults.nearest();
+        if (chaseSprite) {
+            EntityResultSet<SpotAnimation> spotResults = SpotAnimationQuery.newQuery()
+                    .animations(7307)
+                    .results();
+            SpotAnimation archaeologySpot = spotResults.nearest();
 
-        if (archaeologySpot != null) {
-            Coordinate spotCoordinate = archaeologySpot.getCoordinate();
-            println("SpotAnimation found at: " + spotCoordinate);
+            if (archaeologySpot != null) {
+                Coordinate spotCoordinate = archaeologySpot.getCoordinate();
+                println("SpotAnimation found at: " + spotCoordinate);
 
-            double distanceToSpot = player.getCoordinate().distanceTo(spotCoordinate);
+                double distanceToSpot = player.getCoordinate().distanceTo(spotCoordinate);
 
-            if (player.getAnimationId() == 33350 && distanceToSpot <= 1) {
-                println("Player is already excavating. Spot is within 1 tile.");
-                Execution.delay(random.nextLong(2000, 4000));
-                return;
+                if (player.getAnimationId() == 33350 && distanceToSpot <= 1) {
+                    println("Player is already excavating. Spot is within 1 tile.");
+                    Execution.delay(random.nextLong(2000, 4000));
+                    return;
+                }
+
+                if (player.getAnimationId() == -1 || distanceToSpot > 1) {
+                    println("Interacting with 'Mystery remains' at: " + spotCoordinate);
+
+                    SceneObject mysteryRemains = SceneObjectQuery.newQuery()
+                            .name("Mystery remains")
+                            .option("Excavate")
+                            .on(spotCoordinate)
+                            .results()
+                            .nearest();
+
+                    if (mysteryRemains != null) {
+                        println("Interacting with 'Mystery remains' at: " + spotCoordinate);
+                        mysteryRemains.interact("Excavate");
+                        Execution.delay(random.nextLong(3000, 5000));
+                    } else {
+                        println("No 'Mystery remains' found at the spot animation location.");
+                    }
+                }
+            } else {
+                println("No archaeology SpotAnimation found nearby.");
             }
-
-            if (player.getAnimationId() == -1 || distanceToSpot > 1) {
-                println("Interacting with 'Mystery remains' at: " + spotCoordinate);
-
+        } else {
+            if (player.getAnimationId() == -1){
+                println("Chase sprite is disabled, interacting with the nearest 'Mystery remains'.");
                 SceneObject mysteryRemains = SceneObjectQuery.newQuery()
                         .name("Mystery remains")
                         .option("Excavate")
-                        .on(spotCoordinate)
                         .results()
                         .nearest();
 
                 if (mysteryRemains != null) {
-                    println("Interacting with 'Mystery remains' at: " + spotCoordinate);
+                    println("Interacting with 'Mystery remains'.");
                     mysteryRemains.interact("Excavate");
                     Execution.delay(random.nextLong(3000, 5000));
                 } else {
-                    println("No 'Mystery remains' found at the spot animation location.");
+                    println("No 'Mystery remains' found to interact with.");
                 }
-            }
-        } else {
-            println("No archaeology SpotAnimation found nearby. Interacting with 'Mystery remains' to trigger it...");
-
-            SceneObject mysteryRemains = SceneObjectQuery.newQuery()
-                    .name("Mystery remains")
-                    .option("Excavate")
-                    .results()
-                    .nearest();
-
-            if (mysteryRemains != null) {
-                println("Interacting with 'Mystery remains' to trigger SpotAnimation.");
-                mysteryRemains.interact("Excavate");
+            } else{
+                println("Already excavating");
                 Execution.delay(random.nextLong(3000, 5000));
-            } else {
-                println("No 'Mystery remains' found to interact with.");
+
             }
+
         }
     }
 
