@@ -112,11 +112,21 @@ public class CoaezHalloweenEventGraphicsContext extends ScriptGraphicsContext {
                 coaezHalloweenEvent.lastActivityState = CoaezHalloweenEvent.BotState.PUMPKIN;
                 coaezHalloweenEvent.getConsole().println("Switched to Pumpkin spooky event.");
             }
+            ImGui.Text("Only applicable to pumpkin interaction.");
             ImGui.Text("Set high value if you don't want to go on a break, otherwise leave default value which will be randomized every rotation.");
             coaezHalloweenEvent.maxInteractionsBeforePause = ImGui.InputInt("Max interactions before small break", coaezHalloweenEvent.maxInteractionsBeforePause);
             ImGui.Text("How long do we wait after we complete interactions, simulating a small break, random time between the min/max values.");
             coaezHalloweenEvent.minWaitTime = ImGui.InputInt("Min wait time", coaezHalloweenEvent.minWaitTime);
             coaezHalloweenEvent.maxWaitTime = ImGui.InputInt("Max wait time", coaezHalloweenEvent.maxWaitTime);
+
+            ImGui.Separator();
+
+//            if (ImGui.Button("Maze spooky event")) {
+//                coaezHalloweenEvent.setBotState(CoaezHalloweenEvent.BotState.MAZE);
+//                coaezHalloweenEvent.lastActivityState = CoaezHalloweenEvent.BotState.MAZE;
+//                coaezHalloweenEvent.getConsole().println("Switched to Maze spooky event.");
+//            }
+
             saveConfig();
 
             ImGui.End();

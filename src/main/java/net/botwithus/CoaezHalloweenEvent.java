@@ -13,6 +13,7 @@ import net.botwithus.rs3.game.movement.TraverseEvent;
 import net.botwithus.rs3.game.queries.builders.animations.SpotAnimationQuery;
 import net.botwithus.rs3.game.queries.builders.characters.NpcQuery;
 import net.botwithus.rs3.game.queries.builders.components.ComponentQuery;
+import net.botwithus.rs3.game.queries.builders.items.InventoryItemQuery;
 import net.botwithus.rs3.game.queries.builders.objects.SceneObjectQuery;
 import net.botwithus.rs3.game.queries.results.EntityResultSet;
 import net.botwithus.rs3.game.queries.results.ResultSet;
@@ -26,7 +27,8 @@ import net.botwithus.rs3.script.config.ScriptConfig;
 import net.botwithus.internal.scripts.ScriptDefinition;
 import net.botwithus.rs3.game.inventories.Backpack;
 import net.botwithus.rs3.game.inventories.Equipment;
-import java.util.Random;
+
+import java.util.*;
 
 import static net.botwithus.rs3.game.Client.getLocalPlayer;
 
@@ -50,6 +52,7 @@ public class CoaezHalloweenEvent extends LoopingScript {
         ARCHAEOLOGY,
         THIEVING,
         PUMPKIN,
+        MAZE,
         IDLE
     }
 
@@ -64,6 +67,20 @@ public class CoaezHalloweenEvent extends LoopingScript {
     public int maxInteractionsBeforePause = random.nextInt(26) + 15;
     public int minWaitTime = 10;
     public int maxWaitTime = 60;
+
+    private final Coordinate mazeStartLocation = new Coordinate(624,1715,0);
+    private final Area mazeEntranceArea = new Area.Circular(mazeStartLocation, 5);
+    boolean usedDoor = false;
+
+    private final Area bossAreaZone1 = new Area.Rectangular(new Coordinate(699, 1729, 0), new Coordinate(700, 1750, 0));
+    private final Area bossAreaZone2 = new Area.Rectangular(new Coordinate(699, 1749, 0), new Coordinate(717, 1750, 0));
+    private final Area bossAreaZone3 = new Area.Rectangular(new Coordinate(699, 1729, 0), new Coordinate(720, 1731, 0));
+    private final Area bossAreaZone4 = new Area.Rectangular(new Coordinate(718, 1729, 0), new Coordinate(720, 1749, 0));
+    private final Area gateSearchArea = new Area.Rectangular(new Coordinate(697, 1728, 0), new Coordinate(722, 1752, 0));
+    private final int[][] directions = { {0, 1}, {1, 0}, {0, -1}, {-1, 0} }; // Up, Right, Down, Left
+    private final Coordinate mazeStart = new Coordinate(660, 1690, 0);
+    private final Coordinate mazeEnd = new Coordinate(759, 1789, 0);
+
     public CoaezHalloweenEvent(String s, ScriptConfig config, ScriptDefinition scriptDefinition) {
         super(s, config, scriptDefinition);
         this.config = config;
@@ -191,7 +208,7 @@ public class CoaezHalloweenEvent extends LoopingScript {
                 }
             } else {
                 if (currentAnimationId == 24887) {
-                    println("No loot animation detected for " + (thievingDelay * 1000) + " seconds. Searching for new loot...");
+                    println("No loot animation detected for " + (thievingDelay) + " seconds. Searching for new loot...");
                     EntityResultSet<SceneObject> lootableObjects = SceneObjectQuery.newQuery()
                             .option("Loot")
                             .results();
@@ -294,8 +311,6 @@ public class CoaezHalloweenEvent extends LoopingScript {
     }
 
     private void handleArchaeology(Player player) {
-        println("Handling Archaeology...");
-
         if (Interfaces.isOpen(1189)) {
             MiniMenu.interact(ComponentAction.DIALOGUE.getType(), 0, -1, 77922323);
         }
@@ -413,7 +428,6 @@ public class CoaezHalloweenEvent extends LoopingScript {
                     println("No 'Mystery remains' found to interact with.");
                 }
             } else {
-                println("Already excavating");
                 Execution.delay(random.nextLong(3000, 5000));
             }
         }
@@ -430,7 +444,6 @@ public class CoaezHalloweenEvent extends LoopingScript {
                 return false;
             }
         }
-
         return true;
     }
 
@@ -444,7 +457,6 @@ public class CoaezHalloweenEvent extends LoopingScript {
                 return false;
             }
         }
-
         return true;
     }
 
@@ -459,23 +471,37 @@ public class CoaezHalloweenEvent extends LoopingScript {
 
         if (eep != null) {
             println("Interacting with NPC 'Eep'...");
-            if(eep.interact("Collections")){
-                println("Opening collections window");
+            int attempts = 0;
+            boolean interactionSuccess = false;
+
+            while (attempts < 3 && !interactionSuccess) {
+                interactionSuccess = eep.interact("Collections");
+                if (!interactionSuccess) {
+                    println("Failed to interact with NPC, retrying... (" + (attempts + 1) + "/3)");
+                    attempts++;
+                    Execution.delay(random.nextLong(1000, 2000));
+                }
             }
 
-            if (Execution.delayUntil(15000,() -> Interfaces.isOpen(656))) {
-                println("Interface 656 opened, switching to second collection...");
+            if (interactionSuccess) {
+                println("Opening collections window...");
+                if (Execution.delayUntil(15000, () -> Interfaces.isOpen(656))) {
 
-                MiniMenu.interact(ComponentAction.COMPONENT.getType(), 1, 1, 42991647);  // Switch to second collection
-                Execution.delay(random.nextLong(1200, 1800));
+                    println("Interface 656 opened, switching to second collection...");
+                    Execution.delay(random.nextLong(600, 1200));
+                    MiniMenu.interact(ComponentAction.COMPONENT.getType(), 1, 1, 42991647);
+                    Execution.delay(random.nextLong(1200, 1800));
 
-                println("Confirming second collection contribution...");
-                MiniMenu.interact(ComponentAction.COMPONENT.getType(), 1, 0, 42991641);  // Submit collection
-                Execution.delay(random.nextLong(1200, 1800));
+                    println("Confirming second collection contribution...");
+                    MiniMenu.interact(ComponentAction.COMPONENT.getType(), 1, 0, 42991641);
+                    Execution.delay(random.nextLong(1200, 1800));
 
-                println("Second collection submitted. Returning to excavation.");
+                    println("Second collection submitted. Returning to excavation.");
+                } else {
+                    println("Failed to open interface 656.");
+                }
             } else {
-                println("Failed to open interface 656.");
+                println("NPC interaction failed after 3 attempts.");
             }
         } else {
             println("NPC 'Eep' not found.");
@@ -493,23 +519,37 @@ public class CoaezHalloweenEvent extends LoopingScript {
 
         if (eep != null) {
             println("Interacting with NPC 'Eep'...");
-            eep.interact("Collections");
+            int attempts = 0;
+            boolean interactionSuccess = false;
 
-            if (Execution.delayUntil(10000,() -> Interfaces.isOpen(656) )) {
-                println("Interface 656 opened, interacting with 'Collections'...");
+            // Retry logic for NPC interaction
+            while (attempts < 3 && !interactionSuccess) {
+                interactionSuccess = eep.interact("Collections");
+                if (!interactionSuccess) {
+                    println("Failed to interact with NPC, retrying... (" + (attempts + 1) + "/3)");
+                    attempts++;
+                    Execution.delay(random.nextLong(1000, 2000)); // Adding delay between retries
+                }
+            }
 
-                MiniMenu.interact(ComponentAction.COMPONENT.getType(), 1, 0, 42991641);  // Submit collection
-                Execution.delay(1000);
+            if (interactionSuccess) {
+                println("Opening collections window...");
+                if (Execution.delayUntil(10000, () -> Interfaces.isOpen(656))) {
+                    println("Interface 656 opened, interacting with 'Collections'...");
+                    MiniMenu.interact(ComponentAction.COMPONENT.getType(), 1, 0, 42991641);  // Submit collection
+                    Execution.delay(1000);
 
-                println("Collection submitted. Returning to excavation.");
+                    println("Collection submitted. Returning to excavation.");
+                } else {
+                    println("Failed to open interface 656.");
+                }
             } else {
-                println("Failed to open interface 656.");
+                println("NPC interaction failed after 3 attempts.");
             }
         } else {
             println("NPC 'Eep' not found.");
         }
     }
-
     private void checkAndDestroyItems() {
         String[] itemsToDestroy = {
                 "Complete tome"
