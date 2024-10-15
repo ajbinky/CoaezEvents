@@ -113,7 +113,7 @@ public class CoaezHalloweenEvent extends LoopingScript {
 
     private void handleThieving(Player player) {
 
-        if(Backpack.contains("Ancient remains", ancientRemainsCount) && identifyAncientRemains){
+        if(Backpack.contains("Ancient remains", ancientRemainsCount) && identifyAncientRemains && !Backpack.isFull()){
             Backpack.interact("Ancient remains", "Identify all");
         }
 
@@ -278,7 +278,7 @@ public class CoaezHalloweenEvent extends LoopingScript {
             MiniMenu.interact(ComponentAction.DIALOGUE.getType(), 0, -1, 77922323);
         }
 
-        if(Backpack.contains("Ancient remains", ancientRemainsCount) && identifyAncientRemains){
+        if (Backpack.contains("Ancient remains", ancientRemainsCount) && identifyAncientRemains) {
             Backpack.interact("Ancient remains", "Identify all");
         }
 
@@ -304,7 +304,7 @@ public class CoaezHalloweenEvent extends LoopingScript {
                 println("Player is in the bank area, opening the bank...");
                 Bank.open();
                 Execution.delayUntil(10000, Bank::isOpen);
-                if(Bank.isOpen()){
+                if (Bank.isOpen()) {
                     Execution.delay(random.nextLong(1000, 2000));
                     Bank.depositAllExcept("Complete tome");
                     Bank.close();
@@ -358,10 +358,24 @@ public class CoaezHalloweenEvent extends LoopingScript {
                     }
                 }
             } else {
-                println("No archaeology SpotAnimation found nearby.");
+                println("No archaeology SpotAnimation found nearby. Interacting with 'Ancient remains'.");
+
+                SceneObject ancientRemains = SceneObjectQuery.newQuery()
+                        .name("Ancient remains")
+                        .option("Excavate")
+                        .results()
+                        .nearest();
+
+                if (ancientRemains != null) {
+                    println("Interacting with 'Ancient remains' to reveal hidden remains.");
+                    ancientRemains.interact("Excavate");
+                    Execution.delay(random.nextLong(3000, 5000));
+                } else {
+                    println("No 'Ancient remains' found to interact with.");
+                }
             }
         } else {
-            if (player.getAnimationId() == -1){
+            if (player.getAnimationId() == -1) {
                 println("Chase sprite is disabled, interacting with the nearest 'Mystery remains'.");
                 SceneObject mysteryRemains = SceneObjectQuery.newQuery()
                         .name("Mystery remains")
@@ -376,14 +390,13 @@ public class CoaezHalloweenEvent extends LoopingScript {
                 } else {
                     println("No 'Mystery remains' found to interact with.");
                 }
-            } else{
+            } else {
                 println("Already excavating");
                 Execution.delay(random.nextLong(3000, 5000));
-
             }
-
         }
     }
+
 
     private boolean backpackContainsCollectionItems() {
         String[] collectionItems = {
