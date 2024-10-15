@@ -52,6 +52,7 @@ public class CoaezHalloweenEvent extends LoopingScript {
         ARCHAEOLOGY,
         THIEVING,
         PUMPKIN,
+        TURNINCOLLECTIONS,
         MAZE,
         IDLE
     }
@@ -68,19 +69,42 @@ public class CoaezHalloweenEvent extends LoopingScript {
     public int minWaitTime = 10;
     public int maxWaitTime = 60;
 
-    private final Coordinate mazeStartLocation = new Coordinate(624,1715,0);
-    private final Area mazeEntranceArea = new Area.Circular(mazeStartLocation, 5);
-    boolean usedDoor = false;
+//    private final Coordinate mazeStartLocation = new Coordinate(624,1715,0);
+//    private final Area mazeEntranceArea = new Area.Circular(mazeStartLocation, 5);
+//    boolean usedDoor = false;
+//
+//    private final Area bossAreaZone1 = new Area.Rectangular(new Coordinate(699, 1729, 0), new Coordinate(700, 1750, 0));
+//    private final Area bossAreaZone2 = new Area.Rectangular(new Coordinate(699, 1749, 0), new Coordinate(717, 1750, 0));
+//    private final Area bossAreaZone3 = new Area.Rectangular(new Coordinate(699, 1729, 0), new Coordinate(720, 1731, 0));
+//    private final Area bossAreaZone4 = new Area.Rectangular(new Coordinate(718, 1729, 0), new Coordinate(720, 1749, 0));
+//    private final Area gateSearchArea = new Area.Rectangular(new Coordinate(697, 1728, 0), new Coordinate(722, 1752, 0));
+//    private final int[][] directions = { {0, 1}, {1, 0}, {0, -1}, {-1, 0} }; // Up, Right, Down, Left
+//    private final Coordinate mazeStart = new Coordinate(660, 1690, 0);
+//    private final Coordinate mazeEnd = new Coordinate(759, 1789, 0);
 
-    private final Area bossAreaZone1 = new Area.Rectangular(new Coordinate(699, 1729, 0), new Coordinate(700, 1750, 0));
-    private final Area bossAreaZone2 = new Area.Rectangular(new Coordinate(699, 1749, 0), new Coordinate(717, 1750, 0));
-    private final Area bossAreaZone3 = new Area.Rectangular(new Coordinate(699, 1729, 0), new Coordinate(720, 1731, 0));
-    private final Area bossAreaZone4 = new Area.Rectangular(new Coordinate(718, 1729, 0), new Coordinate(720, 1749, 0));
-    private final Area gateSearchArea = new Area.Rectangular(new Coordinate(697, 1728, 0), new Coordinate(722, 1752, 0));
-    private final int[][] directions = { {0, 1}, {1, 0}, {0, -1}, {-1, 0} }; // Up, Right, Down, Left
-    private final Coordinate mazeStart = new Coordinate(660, 1690, 0);
-    private final Coordinate mazeEnd = new Coordinate(759, 1789, 0);
+    enum TransferOptionType {
+        ONE(2, 33882205),
+        FIVE(3, 33882208),
+        TEN(4, 33882211),
+        ALL(7, 33882215),
+        X(5, 33882218);
 
+        private final int varbitValue;
+        private final int componentValue;
+
+        TransferOptionType(int varbitValue, int componentValue) {
+            this.varbitValue = varbitValue;
+            this.componentValue = componentValue;
+        }
+
+        public int getComponentValue() {
+            return this.componentValue;
+        }
+
+        public int getVarbitValue() {
+            return this.varbitValue;
+        }
+    }
     public CoaezHalloweenEvent(String s, ScriptConfig config, ScriptDefinition scriptDefinition) {
         super(s, config, scriptDefinition);
         this.config = config;
@@ -98,8 +122,10 @@ public class CoaezHalloweenEvent extends LoopingScript {
         }
 
         sgc.saveConfig();
-
         switch (botState) {
+            case TURNINCOLLECTIONS:
+                handleCollectionTurnIn(player);
+                break;
             case PUMPKIN:
                 handlePumpkin(player);
                 break;
@@ -117,6 +143,90 @@ public class CoaezHalloweenEvent extends LoopingScript {
                 break;
         }
     }
+
+    private void handleCollectionTurnIn(Player player) {
+        if (!Bank.isOpen()) {
+            println("Opening the bank...");
+            Bank.open();
+            Execution.delayUntil(5000, Bank::isOpen);
+            Execution.delay(random.nextLong(600, 1200));
+            if (!Bank.isOpen()) {
+                println("Failed to open the bank.");
+                return;
+            }
+        }
+
+        String[] firstCollectionItems = {
+                "Soiled Storybook", "Polished Horn", "Dusty Snow Globe",
+                "Ruined Letter", "Strange Coins"
+        };
+
+        String[] secondCollectionItems = {
+                "Ancient Skull", "Ancient Torso", "Ancient Left Arm",
+                "Ancient Right Arm", "Ancient Left Leg", "Ancient Right Leg"
+        };
+
+        int firstCollectionItemCount = 5;
+        int secondCollectionItemCount = 6;
+
+        int firstCollectionAvailable = calculateAvailableCollections(firstCollectionItems, firstCollectionItemCount);
+        int secondCollectionAvailable = calculateAvailableCollections(secondCollectionItems, secondCollectionItemCount);
+
+        println("You have enough items to complete " + firstCollectionAvailable + " first collections.");
+        println("You have enough items to complete " + secondCollectionAvailable + " second collections.");
+
+        int maxInventoryForFirst = Math.min(28 / firstCollectionItemCount, firstCollectionAvailable);
+        int maxInventoryForSecond = Math.min(28 / secondCollectionItemCount, secondCollectionAvailable);
+
+        if (maxInventoryForFirst > 0 && withdrawCollectionItems(firstCollectionItems, maxInventoryForFirst)) {
+            Bank.close();
+            println("First collection items successfully withdrawn. Turning them in.");
+            handleCollectionSubmission();
+        }
+
+        if (maxInventoryForSecond > 0 && withdrawCollectionItems(secondCollectionItems, maxInventoryForSecond)) {
+            Bank.close();
+            println("Second collection items successfully withdrawn. Turning them in.");
+            handleSecondCollectionSubmission();
+        }
+    }
+
+    private int calculateAvailableCollections(String[] collectionItems, int collectionItemCount) {
+        int minItemCount = Integer.MAX_VALUE;
+
+        for (String item : collectionItems) {
+            if (Bank.contains(item)) {
+                int itemCount = Bank.getCount(item);
+                int possibleCollections = itemCount / collectionItemCount;
+                println("Found " + itemCount + " of " + item + " in the bank. Can make " + possibleCollections + " collections from it.");
+                minItemCount = Math.min(minItemCount, possibleCollections);
+            } else {
+                println("Item " + item + " not found in the bank.");
+                return 0;
+            }
+        }
+
+        return minItemCount;
+    }
+
+    private boolean withdrawCollectionItems(String[] collectionItems, int maxCollections) {
+        for (String item : collectionItems) {
+            if (Bank.contains(item)) {
+                for (int i = 0; i < maxCollections; i++) {
+                    if (!Bank.withdraw(item, TransferOptionType.ONE.getVarbitValue())) {
+                        println("Failed to withdraw " + item + " on attempt " + (i + 1));
+                        return false;
+                    }
+                    Execution.delay(random.nextLong(100, 200));
+                }
+            } else {
+                println(item + " not found in the bank.");
+                return false;
+            }
+        }
+        return true;
+    }
+
 
     private void handlePumpkin(Player player) {
         println("Handling pumpkin interaction. Interaction count: " + interactionCount + " / " + maxInteractionsBeforePause);
@@ -489,17 +599,37 @@ public class CoaezHalloweenEvent extends LoopingScript {
             if (interactionSuccess) {
                 println("Opening collections window...");
                 if (Execution.delayUntil(15000, () -> Interfaces.isOpen(656))) {
-
                     println("Interface 656 opened, switching to second collection...");
+
                     Execution.delay(random.nextLong(600, 1200));
-                    MiniMenu.interact(ComponentAction.COMPONENT.getType(), 1, 1, 42991647);
-                    Execution.delay(random.nextLong(1200, 1800));
 
-                    println("Confirming second collection contribution...");
-                    MiniMenu.interact(ComponentAction.COMPONENT.getType(), 1, 0, 42991641);
-                    Execution.delay(random.nextLong(1200, 1800));
+                    ResultSet<Component> secondCollectionTab = ComponentQuery.newQuery(656)
+                            .componentIndex(30)
+                            .results();
+                    Component secondTab = secondCollectionTab.first();
+                    if (secondTab != null && !secondTab.isHidden()) {
+                        println("Second collection tab is visible. Attempting to switch...");
+                        MiniMenu.interact(ComponentAction.COMPONENT.getType(), 1, 1, 42991647);
+                        Execution.delay(random.nextLong(1200, 1800));
 
-                    println("Second collection submitted. Returning to excavation.");
+                        println("Confirming second collection contribution...");
+
+                        ResultSet<Component> contributeAllComponent = ComponentQuery.newQuery(656)
+                                .componentIndex(24)
+                                .results();
+                        Component confirmButton = contributeAllComponent.first();
+                        if (confirmButton != null && !confirmButton.isHidden()) {
+                            println("'Contribute All' button is visible. Attempting to confirm...");
+                            MiniMenu.interact(ComponentAction.COMPONENT.getType(), 1, 0, 42991641);
+                            Execution.delay(random.nextLong(1200, 1800));
+
+                            println("Second collection submitted. Returning to excavation.");
+                        } else {
+                            println("Failed to find or interact with 'Contribute All' button.");
+                        }
+                    } else {
+                        println("Failed to find or interact with second collection tab.");
+                    }
                 } else {
                     println("Failed to open interface 656.");
                 }
@@ -537,11 +667,22 @@ public class CoaezHalloweenEvent extends LoopingScript {
             if (interactionSuccess) {
                 println("Opening collections window...");
                 if (Execution.delayUntil(10000, () -> Interfaces.isOpen(656))) {
-                    println("Interface 656 opened, interacting with 'Collections'...");
-                    MiniMenu.interact(ComponentAction.COMPONENT.getType(), 1, 0, 42991641);
-                    Execution.delay(1000);
+                    println("Interface 656 opened, confirming collection submission...");
 
-                    println("Collection submitted. Returning to excavation.");
+                    ResultSet<Component> contributeAllComponent = ComponentQuery.newQuery(656)
+                            .componentIndex(24)
+                            .results();
+
+                    Component confirmButton = contributeAllComponent.first();
+                    if (confirmButton != null && !confirmButton.isHidden()) {
+                        println("Found 'Contribute All' button. Attempting to interact...");
+                        MiniMenu.interact(ComponentAction.COMPONENT.getType(), 1, 0, 42991641);
+                        Execution.delay(random.nextLong(1200, 1800));
+
+                        println("Collection submitted. Returning to excavation.");
+                    } else {
+                        println("Failed to find or interact with 'Contribute All' button.");
+                    }
                 } else {
                     println("Failed to open interface 656.");
                 }
@@ -552,6 +693,8 @@ public class CoaezHalloweenEvent extends LoopingScript {
             println("NPC 'Eep' not found.");
         }
     }
+
+
 
     public boolean moveTo(Coordinate location) {
         Player player = getLocalPlayer();

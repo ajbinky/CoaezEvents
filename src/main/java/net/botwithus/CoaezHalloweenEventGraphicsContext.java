@@ -104,7 +104,13 @@ public class CoaezHalloweenEventGraphicsContext extends ScriptGraphicsContext {
             coaezHalloweenEvent.ancientRemainsCount = ImGui.InputInt("How much remains before we identify", coaezHalloweenEvent.ancientRemainsCount);
 
             coaezHalloweenEvent.chaseSprite = ImGui.Checkbox("Chase sprite during archeology", coaezHalloweenEvent.chaseSprite);
+            ImGui.Separator();
 
+            if (ImGui.Button("Turn in collections")) {
+                coaezHalloweenEvent.setBotState(CoaezHalloweenEvent.BotState.TURNINCOLLECTIONS);
+                coaezHalloweenEvent.lastActivityState = CoaezHalloweenEvent.BotState.TURNINCOLLECTIONS;
+                coaezHalloweenEvent.getConsole().println("Switched to turning in collections event.");
+            }
             ImGui.Separator();
 
             if (ImGui.Button("Pumpkin spooky event")) {
