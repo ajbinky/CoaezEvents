@@ -156,6 +156,7 @@ public class CoaezHalloweenEvent extends LoopingScript {
 
         if(Backpack.contains("Ancient remains", ancientRemainsCount) && identifyAncientRemains && !Backpack.isFull()){
             Backpack.interact("Ancient remains", "Identify all");
+            Execution.delay(random.nextLong(1200, 1800));
         }
 
         if (backpackContainsSecondCollectionItems()) {
@@ -241,6 +242,7 @@ public class CoaezHalloweenEvent extends LoopingScript {
 
         if(Backpack.contains("Ancient remains", ancientRemainsCount) && identifyAncientRemains){
             Backpack.interact("Ancient remains", "Identify all");
+            Execution.delay(random.nextLong(1200, 1800));
         }
 
         if (backpackContainsSecondCollectionItems()) {
@@ -317,6 +319,7 @@ public class CoaezHalloweenEvent extends LoopingScript {
 
         if (Backpack.contains("Ancient remains", ancientRemainsCount) && identifyAncientRemains) {
             Backpack.interact("Ancient remains", "Identify all");
+            Execution.delay(random.nextLong(1200, 1800));
         }
 
         if (backpackContainsCollectionItems()) {
@@ -522,13 +525,12 @@ public class CoaezHalloweenEvent extends LoopingScript {
             int attempts = 0;
             boolean interactionSuccess = false;
 
-            // Retry logic for NPC interaction
             while (attempts < 3 && !interactionSuccess) {
                 interactionSuccess = eep.interact("Collections");
                 if (!interactionSuccess) {
                     println("Failed to interact with NPC, retrying... (" + (attempts + 1) + "/3)");
                     attempts++;
-                    Execution.delay(random.nextLong(1000, 2000)); // Adding delay between retries
+                    Execution.delay(random.nextLong(1000, 2000));
                 }
             }
 
@@ -536,7 +538,7 @@ public class CoaezHalloweenEvent extends LoopingScript {
                 println("Opening collections window...");
                 if (Execution.delayUntil(10000, () -> Interfaces.isOpen(656))) {
                     println("Interface 656 opened, interacting with 'Collections'...");
-                    MiniMenu.interact(ComponentAction.COMPONENT.getType(), 1, 0, 42991641);  // Submit collection
+                    MiniMenu.interact(ComponentAction.COMPONENT.getType(), 1, 0, 42991641);
                     Execution.delay(1000);
 
                     println("Collection submitted. Returning to excavation.");
@@ -548,32 +550,6 @@ public class CoaezHalloweenEvent extends LoopingScript {
             }
         } else {
             println("NPC 'Eep' not found.");
-        }
-    }
-    private void checkAndDestroyItems() {
-        String[] itemsToDestroy = {
-                "Complete tome"
-        };
-
-        for (String itemName : itemsToDestroy) {
-            if (Backpack.contains(itemName)) {
-                println("Found " + itemName + " in backpack. Attempting to destroy...");
-                destroyItem(itemName);
-            }
-        }
-    }
-
-    private void destroyItem(String itemName) {
-        ResultSet<Component> results = ComponentQuery.newQuery(1473).componentIndex(5).itemName(itemName).results();
-        if (!results.isEmpty()) {
-            Component itemComponent = results.first();
-            itemComponent.interact("Destroy");
-            Execution.delayUntil(5000, () -> Interfaces.isOpen(1183));
-
-            if (Interfaces.isOpen(1183)) {
-                MiniMenu.interact(ComponentAction.DIALOGUE.getType(), 0, -1, 77529093);
-                Execution.delay(600);
-            }
         }
     }
 
