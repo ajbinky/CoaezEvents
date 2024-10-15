@@ -359,16 +359,16 @@ public class CoaezHalloweenEvent extends LoopingScript {
                 }
             } else {
                 println("No archaeology SpotAnimation found nearby. Interacting with 'Ancient remains'.");
-
-                SceneObject ancientRemains = SceneObjectQuery.newQuery()
-                        .name("Ancient remains")
+                SceneObject mysteryRemains = SceneObjectQuery.newQuery()
+                        .name("Mystery remains")
                         .option("Excavate")
                         .results()
                         .nearest();
 
-                if (ancientRemains != null) {
+
+                if (mysteryRemains != null) {
                     println("Interacting with 'Ancient remains' to reveal hidden remains.");
-                    ancientRemains.interact("Excavate");
+                    mysteryRemains.interact("Excavate");
                     Execution.delay(random.nextLong(3000, 5000));
                 } else {
                     println("No 'Ancient remains' found to interact with.");
