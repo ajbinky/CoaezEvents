@@ -95,6 +95,7 @@ public class CoaezHalloweenEventGraphicsContext extends ScriptGraphicsContext {
             }
             ImGui.SameLine();
             coaezHalloweenEvent.thievingDelay = ImGui.InputInt("Custom delay for thieving, recommended 5+ seconds", coaezHalloweenEvent.thievingDelay);
+            ImGui.Separator();
 
             ImGui.Text("Applicable to thieving , summoning and archeology");
             coaezHalloweenEvent.identifyAncientRemains = ImGui.Checkbox("Identify ancient remains", coaezHalloweenEvent.identifyAncientRemains);
@@ -111,6 +112,11 @@ public class CoaezHalloweenEventGraphicsContext extends ScriptGraphicsContext {
                 coaezHalloweenEvent.lastActivityState = CoaezHalloweenEvent.BotState.PUMPKIN;
                 coaezHalloweenEvent.getConsole().println("Switched to Pumpkin spooky event.");
             }
+            ImGui.Text("Set high value if you don't want to go on a break, otherwise leave default value which will be randomized every rotation.");
+            coaezHalloweenEvent.maxInteractionsBeforePause = ImGui.InputInt("Max interactions before small break", coaezHalloweenEvent.maxInteractionsBeforePause);
+            ImGui.Text("How long do we wait after we complete interactions, simulating a small break, random time between the min/max values.");
+            coaezHalloweenEvent.minWaitTime = ImGui.InputInt("Min wait time", coaezHalloweenEvent.minWaitTime);
+            coaezHalloweenEvent.maxWaitTime = ImGui.InputInt("Max wait time", coaezHalloweenEvent.maxWaitTime);
             saveConfig();
 
             ImGui.End();

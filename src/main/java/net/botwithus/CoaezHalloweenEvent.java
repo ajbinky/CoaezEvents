@@ -60,7 +60,10 @@ public class CoaezHalloweenEvent extends LoopingScript {
     public boolean chaseSprite;
     public int ancientRemainsCount = 27;
     public int thievingDelay = 10;
-
+    public int interactionCount = 0;
+    public int maxInteractionsBeforePause = random.nextInt(26) + 15;
+    public int minWaitTime = 10;
+    public int maxWaitTime = 60;
     public CoaezHalloweenEvent(String s, ScriptConfig config, ScriptDefinition scriptDefinition) {
         super(s, config, scriptDefinition);
         this.config = config;
@@ -99,6 +102,8 @@ public class CoaezHalloweenEvent extends LoopingScript {
     }
 
     private void handlePumpkin(Player player) {
+        println("Handling pumpkin interaction. Interaction count: " + interactionCount + " / " + maxInteractionsBeforePause);
+
         EntityResultSet<Npc> pumpkinResults = NpcQuery.newQuery()
                 .name("Smashing Pumpkin")
                 .option("Smash")
@@ -106,8 +111,27 @@ public class CoaezHalloweenEvent extends LoopingScript {
         Npc pumpkin = pumpkinResults.nearest();
 
         if (pumpkin != null) {
+            println("Smashing pumpkin...");
             pumpkin.interact("Smash");
-            Execution.delay(2250);
+            Execution.delay(random.nextLong(2300, 2400));
+
+            interactionCount++;
+
+            println("Interaction #" + interactionCount + " completed.");
+
+            if (interactionCount >= maxInteractionsBeforePause) {
+                long randomWait = random.nextLong(minWaitTime * 1000, maxWaitTime * 1000);
+                println("Pausing for " + randomWait / 1000 + " seconds after " + interactionCount + " interactions.");
+
+                Execution.delay(randomWait);
+
+                interactionCount = 0;
+                maxInteractionsBeforePause = random.nextInt(26) + 15;
+
+                println("Next pause will be after " + maxInteractionsBeforePause + " interactions.");
+            }
+        } else {
+            println("No Smashing Pumpkin found.");
         }
     }
 
@@ -151,8 +175,7 @@ public class CoaezHalloweenEvent extends LoopingScript {
             lastAnimationChangeTime = System.currentTimeMillis();
         }
 
-        // Check if the animation has stayed the same for at least 5 seconds
-        if (System.currentTimeMillis() - lastAnimationChangeTime >= thievingDelay) {
+        if (System.currentTimeMillis() - lastAnimationChangeTime >= (thievingDelay * 1000)) {
             if (currentAnimationId == -1) {
                 EntityResultSet<SceneObject> lootableObjects = SceneObjectQuery.newQuery()
                         .option("Loot")
@@ -167,9 +190,8 @@ public class CoaezHalloweenEvent extends LoopingScript {
                     println("No lootable objects nearby.");
                 }
             } else {
-                // Handle player 24887 case (already looting, but no animation after 5 seconds)
-                if (player.getId() == 24887) {
-                    println("No loot animation detected for 5 seconds. Searching for new loot...");
+                if (currentAnimationId == 24887) {
+                    println("No loot animation detected for " + (thievingDelay * 1000) + " seconds. Searching for new loot...");
                     EntityResultSet<SceneObject> lootableObjects = SceneObjectQuery.newQuery()
                             .option("Loot")
                             .results();
@@ -177,13 +199,13 @@ public class CoaezHalloweenEvent extends LoopingScript {
                     if (nearestLootable != null) {
                         println("New lootable object found. Interacting...");
                         nearestLootable.interact("Loot");
-                        Execution.delay(random.nextLong(2000, 4000));
+                        Execution.delay(random.nextLong(6000, 8000));
                     } else {
                         println("No other lootable objects found.");
                     }
                 } else {
                     println("Player is already interacting. Waiting...");
-                    Execution.delay(random.nextLong(1000, 3000));
+                    Execution.delay(random.nextLong(1000, 2000));
                 }
             }
         } else {
