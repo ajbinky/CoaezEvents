@@ -3,6 +3,7 @@ package net.botwithus;
 import net.botwithus.api.game.hud.inventories.Bank;
 import net.botwithus.rs3.events.impl.ChatMessageEvent;
 import net.botwithus.rs3.game.*;
+import net.botwithus.rs3.game.actionbar.ActionBar;
 import net.botwithus.rs3.game.hud.interfaces.Component;
 import net.botwithus.rs3.game.hud.interfaces.Interfaces;
 import net.botwithus.rs3.game.minimenu.MiniMenu;
@@ -19,6 +20,7 @@ import net.botwithus.rs3.game.queries.results.EntityResultSet;
 import net.botwithus.rs3.game.queries.results.ResultSet;
 import net.botwithus.rs3.game.scene.entities.animation.SpotAnimation;
 import net.botwithus.rs3.game.scene.entities.characters.npc.Npc;
+import net.botwithus.rs3.game.scene.entities.characters.player.LocalPlayer;
 import net.botwithus.rs3.game.scene.entities.characters.player.Player;
 import net.botwithus.rs3.game.scene.entities.object.SceneObject;
 import net.botwithus.rs3.script.Execution;
@@ -46,6 +48,12 @@ public class CoaezHalloweenEvent extends LoopingScript {
     private final Area excavationArea = new Area.Circular(excavationLocation, 15);
     private final Coordinate summoningLocation = new Coordinate(586, 1742, 0);
     private final Area summoningArea = new Area.Circular(summoningLocation, 15);
+    private final Coordinate stairsLocation = new Coordinate(3323,3378,0);
+    private final Area stairsArea = new Area.Circular(stairsLocation, 5);
+    private final Coordinate tomeLocation = new Coordinate(3318, 3378, 1);
+    private final Area tomeArea = new Area.Circular(tomeLocation, 3);
+    private final Coordinate eepLocation = new Coordinate(580,1736,0);
+    private final Area eepArea = new Area.Circular(eepLocation, 10);
 
     public enum BotState {
         SUMMONING,
@@ -68,6 +76,8 @@ public class CoaezHalloweenEvent extends LoopingScript {
     public int maxInteractionsBeforePause = random.nextInt(26) + 15;
     public int minWaitTime = 10;
     public int maxWaitTime = 60;
+    public int tomeCount = 20;
+    public boolean handInTomes = false;
 
 //    private final Coordinate mazeStartLocation = new Coordinate(624,1715,0);
 //    private final Area mazeEntranceArea = new Area.Circular(mazeStartLocation, 5);
@@ -145,85 +155,119 @@ public class CoaezHalloweenEvent extends LoopingScript {
     }
 
     private void handleCollectionTurnIn(Player player) {
+
+        if(!bankArea.contains(player)){
+            Movement.walkTo(bankLocation.getX(), bankLocation.getY(), true);
+            Execution.delay(random.nextLong(6000, 10000));
+        }
         if (!Bank.isOpen()) {
             println("Opening the bank...");
             Bank.open();
             Execution.delayUntil(5000, Bank::isOpen);
+            Bank.depositAll();
             Execution.delay(random.nextLong(600, 1200));
-            if (!Bank.isOpen()) {
-                println("Failed to open the bank.");
-                return;
-            }
+        } else {
+            println("Can't open bank");
+            return;
         }
 
         String[] firstCollectionItems = {
-                "Soiled Storybook", "Polished Horn", "Dusty Snow Globe",
-                "Ruined Letter", "Strange Coins"
+                "Soiled storybook", "Polished horn", "Dusty snow globe", "Ruined letter", "Strange coins"
         };
 
         String[] secondCollectionItems = {
-                "Ancient Skull", "Ancient Torso", "Ancient Left Arm",
-                "Ancient Right Arm", "Ancient Left Leg", "Ancient Right Leg"
+                "Ancient skull", "Ancient torso", "Ancient left arm", "Ancient right arm", "Ancient left leg", "Ancient right leg"
         };
 
-        int firstCollectionItemCount = 5;
-        int secondCollectionItemCount = 6;
+        int firstCollectionItemCount = firstCollectionItems.length;
+        int secondCollectionItemCount = secondCollectionItems.length;
 
+        println("Calculating available collections from the bank...");
         int firstCollectionAvailable = calculateAvailableCollections(firstCollectionItems, firstCollectionItemCount);
         int secondCollectionAvailable = calculateAvailableCollections(secondCollectionItems, secondCollectionItemCount);
 
         println("You have enough items to complete " + firstCollectionAvailable + " first collections.");
         println("You have enough items to complete " + secondCollectionAvailable + " second collections.");
 
-        int maxInventoryForFirst = Math.min(28 / firstCollectionItemCount, firstCollectionAvailable);
-        int maxInventoryForSecond = Math.min(28 / secondCollectionItemCount, secondCollectionAvailable);
+        int totalFreeSpace = 28;
 
-        if (maxInventoryForFirst > 0 && withdrawCollectionItems(firstCollectionItems, maxInventoryForFirst)) {
+        while (firstCollectionAvailable > 0 || secondCollectionAvailable > 0) {
+            int maxCollectionsForFirst = Math.min(totalFreeSpace / firstCollectionItemCount, firstCollectionAvailable);
+            int maxCollectionsForSecond = Math.min(totalFreeSpace / secondCollectionItemCount, secondCollectionAvailable);
+
+            if (maxCollectionsForFirst == 0 && maxCollectionsForSecond == 0) {
+                println("No more collections to withdraw. Stopping.");
+                setBotState(BotState.IDLE);
+                return;
+            }
+
+            int collectionsToWithdrawFirst = Math.min(maxCollectionsForFirst, totalFreeSpace / firstCollectionItemCount);
+            int collectionsToWithdrawSecond = Math.min(maxCollectionsForSecond, (totalFreeSpace - collectionsToWithdrawFirst * firstCollectionItemCount) / secondCollectionItemCount);
+
+            println("Withdrawing " + collectionsToWithdrawFirst + " first collections and " + collectionsToWithdrawSecond + " second collections.");
+            if (collectionsToWithdrawFirst > 0) {
+                withdrawMaxCollectionItems(firstCollectionItems, collectionsToWithdrawFirst);
+                totalFreeSpace -= collectionsToWithdrawFirst * firstCollectionItemCount;
+                firstCollectionAvailable -= collectionsToWithdrawFirst;
+            }
+
+            if (collectionsToWithdrawSecond > 0) {
+                withdrawMaxCollectionItems(secondCollectionItems, collectionsToWithdrawSecond);
+                totalFreeSpace -= collectionsToWithdrawSecond * secondCollectionItemCount;
+                secondCollectionAvailable -= collectionsToWithdrawSecond;
+            }
+
             Bank.close();
-            println("First collection items successfully withdrawn. Turning them in.");
-            handleCollectionSubmission();
+
+            if (collectionsToWithdrawFirst > 0) {
+                println("Turning in first collection.");
+                handleCollectionSubmission(player);
+            }
+
+            if (collectionsToWithdrawSecond > 0) {
+                println("Turning in second collection.");
+                handleSecondCollectionSubmission(player);
+            }
+
+            return;
         }
 
-        if (maxInventoryForSecond > 0 && withdrawCollectionItems(secondCollectionItems, maxInventoryForSecond)) {
-            Bank.close();
-            println("Second collection items successfully withdrawn. Turning them in.");
-            handleSecondCollectionSubmission();
-        }
+        println("Finished turning in collections.");
+        setBotState(BotState.IDLE);
     }
+
 
     private int calculateAvailableCollections(String[] collectionItems, int collectionItemCount) {
-        int minItemCount = Integer.MAX_VALUE;
+        int minAvailable = Integer.MAX_VALUE;
 
         for (String item : collectionItems) {
-            if (Bank.contains(item)) {
-                int itemCount = Bank.getCount(item);
-                int possibleCollections = itemCount / collectionItemCount;
-                println("Found " + itemCount + " of " + item + " in the bank. Can make " + possibleCollections + " collections from it.");
-                minItemCount = Math.min(minItemCount, possibleCollections);
-            } else {
-                println("Item " + item + " not found in the bank.");
-                return 0;
-            }
+            int itemCount = Bank.getCount(item);
+            println("Found " + itemCount + " of " + item + " in the bank.");
+            minAvailable = Math.min(minAvailable, itemCount);
         }
 
-        return minItemCount;
+        int collectionsAvailable = minAvailable;
+        println("You can complete " + collectionsAvailable + " full collections based on available items.");
+
+        return collectionsAvailable;
     }
 
-    private boolean withdrawCollectionItems(String[] collectionItems, int maxCollections) {
-        for (String item : collectionItems) {
-            if (Bank.contains(item)) {
-                for (int i = 0; i < maxCollections; i++) {
-                    if (!Bank.withdraw(item, TransferOptionType.ONE.getVarbitValue())) {
-                        println("Failed to withdraw " + item + " on attempt " + (i + 1));
-                        return false;
-                    }
-                    Execution.delay(random.nextLong(100, 200));
-                }
-            } else {
-                println(item + " not found in the bank.");
+    private boolean withdrawMaxCollectionItems(String[] items, int fullCollectionCount) {
+        int itemsPerCollection = items.length;
+        int maxCollectionsInInventory = 28 / itemsPerCollection;
+
+        int collectionsToWithdraw = Math.min(fullCollectionCount, maxCollectionsInInventory);
+        println("Withdrawing " + collectionsToWithdraw + " of each item for the collections.");
+
+        for (String item : items) {  // Loop through each item
+            println("Withdrawing " + collectionsToWithdraw + " of " + item);
+            if (!Bank.withdraw(item, TransferOptionType.X.getVarbitValue())) {
+                println("Failed to withdraw " + collectionsToWithdraw + " of " + item);
                 return false;
             }
+            Execution.delay(random.nextLong(200, 400));
         }
+
         return true;
     }
 
@@ -270,7 +314,7 @@ public class CoaezHalloweenEvent extends LoopingScript {
         }
 
         if (backpackContainsSecondCollectionItems()) {
-            handleSecondCollectionSubmission();
+            handleSecondCollectionSubmission(player);
             return;
         }
 
@@ -356,7 +400,7 @@ public class CoaezHalloweenEvent extends LoopingScript {
         }
 
         if (backpackContainsSecondCollectionItems()) {
-            handleSecondCollectionSubmission();
+            handleSecondCollectionSubmission(player);
             return;
         }
 
@@ -423,126 +467,207 @@ public class CoaezHalloweenEvent extends LoopingScript {
     }
 
     private void handleArchaeology(Player player) {
-        if (Interfaces.isOpen(1189)) {
-            MiniMenu.interact(ComponentAction.DIALOGUE.getType(), 0, -1, 77922323);
+        handleDialogue();
+
+        if (Backpack.contains("Complete tome", tomeCount) && handInTomes) {
+            handInTomesProcedure(player);
         }
 
-        if (Backpack.contains("Ancient remains", ancientRemainsCount) && identifyAncientRemains) {
-            Backpack.interact("Ancient remains", "Identify all");
-            Execution.delay(random.nextLong(1200, 1800));
-        }
+        handleAncientRemains();
 
         if (backpackContainsCollectionItems()) {
-            handleCollectionSubmission();
+            handleCollectionSubmission(player);
             return;
         }
 
         if (backpackContainsSecondCollectionItems()) {
-            handleSecondCollectionSubmission();
+            handleSecondCollectionSubmission(player);
             return;
         }
 
         if (Backpack.isFull()) {
-            println("Backpack is full. Moving to bank to load the last preset.");
-            if (!bankArea.contains(player.getCoordinate())) {
-                println("Player is not in the bank area, moving to bank...");
-                Movement.walkTo(bankLocation.getX(), bankLocation.getY(), true);
-                Execution.delay(random.nextLong(6000, 10000));
-                return;
-            }
-            if (bankArea.contains(player.getCoordinate())) {
-                println("Player is in the bank area, opening the bank...");
-                Bank.open();
-                Execution.delayUntil(10000, Bank::isOpen);
-                if (Bank.isOpen()) {
-                    Execution.delay(random.nextLong(1000, 2000));
-                    Bank.depositAllExcept("Complete tome");
-                    Bank.close();
-                    return;
-                }
-            }
+            handleFullBackpack(player);
             return;
         }
 
         if (!excavationArea.contains(player.getCoordinate())) {
-            println("Returning to excavation site at " + excavationLocation);
-            Movement.walkTo(excavationLocation.getX(), excavationLocation.getY(), true);
-            Execution.delay(random.nextLong(3000, 5000));
+            returnToExcavationSite(player);
             return;
         }
 
-        if (chaseSprite) {
-            EntityResultSet<SpotAnimation> spotResults = SpotAnimationQuery.newQuery()
-                    .animations(7307)
-                    .results();
-            SpotAnimation archaeologySpot = spotResults.nearest();
+        handleChaseSprite(player);
+    }
 
-            if (archaeologySpot != null) {
-                Coordinate spotCoordinate = archaeologySpot.getCoordinate();
-                println("SpotAnimation found at: " + spotCoordinate);
+    private void handleDialogue() {
+        if (Interfaces.isOpen(1189)) {
+            MiniMenu.interact(ComponentAction.DIALOGUE.getType(), 0, -1, 77922323);
+        }
+    }
 
-                double distanceToSpot = player.getCoordinate().distanceTo(spotCoordinate);
+    private void handInTomesProcedure(Player player) {
+        println("Complete tome count reached, handing in tomes");
 
-                if (player.getAnimationId() == 33350 && distanceToSpot <= 1) {
-                    println("Player is already excavating. Spot is within 1 tile.");
-                    Execution.delay(random.nextLong(2000, 4000));
-                    return;
-                }
+        stopPlayerAnimation(player);
 
-                if (player.getAnimationId() == -1 || distanceToSpot > 1) {
-                    println("Interacting with 'Mystery remains' at: " + spotCoordinate);
+        teleportToWarsRetreat(player);
 
-                    SceneObject mysteryRemains = SceneObjectQuery.newQuery()
-                            .name("Mystery remains")
-                            .option("Excavate")
-                            .on(spotCoordinate)
-                            .results()
-                            .nearest();
+        moveToTomeArea(player);
 
-                    if (mysteryRemains != null) {
-                        println("Interacting with 'Mystery remains' at: " + spotCoordinate);
-                        mysteryRemains.interact("Excavate");
-                        Execution.delay(random.nextLong(3000, 5000));
-                    } else {
-                        println("No 'Mystery remains' found at the spot animation location.");
-                    }
-                }
+        interactWithDeskToStudyTomes(player);
+
+        teleportBackToEvent();
+    }
+
+    private void stopPlayerAnimation(Player player) {
+        if (player.getAnimationId() != -1) {
+            println("Trying to stop interaction");
+            Movement.walkTo(player.getCoordinate().getX(), player.getCoordinate().getY(), false);
+            Execution.delayUntil(1200, () -> player.getAnimationId() == -1);
+        }
+    }
+
+    private void teleportToWarsRetreat(Player player) {
+        if (player.getAnimationId() == -1 && ActionBar.containsAbility("War's Retreat Teleport")) {
+            if (ActionBar.useAbility("War's Retreat Teleport")) {
+                Execution.delayUntil(10000, () -> player.getCoordinate().getRegionId() == 13214);
+            }
+        }
+    }
+
+    private void moveToTomeArea(Player player) {
+        if (!tomeArea.contains(player)) {
+            println("Moving to tome area");
+            moveTo(tomeArea.getRandomWalkableCoordinate());
+            println("Moved to tome area");
+        }
+    }
+
+    private void interactWithDeskToStudyTomes(Player player) {
+        if (tomeArea.contains(player)) {
+            println("Interacting with desk to study the tome...");
+            SceneObject desk = SceneObjectQuery.newQuery().name("Desk").option("Study").results().nearest();
+            if (desk != null && desk.interact("Study")) {
+                println("Interacted with desk to study");
+                Execution.delayUntil(60000, () -> !Backpack.contains("Complete tome"));
+            }
+            println("All tomes studied.");
+        }
+    }
+
+    private void teleportBackToEvent() {
+        println("Attempting to teleport back to the event...");
+        ResultSet<Component> communityComponent = ComponentQuery.newQuery(1431).componentIndex(0).results();
+        Component communityButton = communityComponent.first();
+
+        if (communityButton != null && !communityButton.isHidden()) {
+            interactWithCommunityComponent(communityButton);
+        } else {
+            println("Community component not found or not visible.");
+        }
+    }
+
+    private void interactWithCommunityComponent(Component communityButton) {
+        if (MiniMenu.interact(ComponentAction.COMPONENT.getType(), 1, 4, 93782016)) {
+            println("Open the community window");
+            Execution.delayUntil(5000, () -> Interfaces.isOpen(1289));
+            Execution.delay(random.nextLong(600, 1200));
+
+            ResultSet<Component> teleportComponent = ComponentQuery.newQuery(1289).componentIndex(28).results();
+            Component teleportButton = teleportComponent.first();
+
+            if (teleportButton != null && !teleportButton.isHidden()) {
+                println("Teleport button found and visible. Interacting...");
+                MiniMenu.interact(ComponentAction.COMPONENT.getType(), 1, -1, 84475932);
+                Execution.delay(random.nextLong(1200, 1800));
+                println("Teleportation back to the event complete.");
             } else {
-                println("No archaeology SpotAnimation found nearby. Interacting with 'Ancient remains'.");
-                SceneObject mysteryRemains = SceneObjectQuery.newQuery()
-                        .name("Mystery remains")
-                        .option("Excavate")
-                        .results()
-                        .nearest();
+                println("Teleport button not found or not visible.");
+            }
+        }
+    }
 
+    private void handleAncientRemains() {
+        if (Backpack.contains("Ancient remains", ancientRemainsCount) && identifyAncientRemains) {
+            Backpack.interact("Ancient remains", "Identify all");
+            Execution.delay(random.nextLong(1200, 1800));
+        }
+    }
 
-                if (mysteryRemains != null) {
-                    println("Interacting with 'Ancient remains' to reveal hidden remains.");
-                    mysteryRemains.interact("Excavate");
-                    Execution.delay(random.nextLong(3000, 5000));
-                } else {
-                    println("No 'Ancient remains' found to interact with.");
-                }
+    private void handleFullBackpack(Player player) {
+        println("Backpack is full. Moving to bank to load the last preset.");
+        if (!bankArea.contains(player.getCoordinate())) {
+            println("Player is not in the bank area, moving to bank...");
+            Movement.walkTo(bankLocation.getX(), bankLocation.getY(), true);
+            Execution.delay(random.nextLong(6000, 10000));
+        } else {
+            openAndUseBank();
+        }
+    }
+
+    private void openAndUseBank() {
+        println("Player is in the bank area, opening the bank...");
+        Bank.open();
+        Execution.delayUntil(10000, Bank::isOpen);
+        if (Bank.isOpen()) {
+            Execution.delay(random.nextLong(1000, 2000));
+            Bank.depositAllExcept("Complete tome");
+            Bank.close();
+        }
+    }
+
+    private void returnToExcavationSite(Player player) {
+        println("Returning to excavation site at " + excavationLocation);
+        Movement.walkTo(excavationLocation.getX(), excavationLocation.getY(), true);
+        Execution.delay(random.nextLong(3000, 5000));
+    }
+
+    private void handleChaseSprite(Player player) {
+        if (chaseSprite) {
+            SpotAnimation archaeologySpot = SpotAnimationQuery.newQuery().animations(7307).results().nearest();
+            if (archaeologySpot != null) {
+                interactWithSpotAnimation(player, archaeologySpot);
+            } else {
+                interactWithNearestAncientRemains();
             }
         } else {
-            if (player.getAnimationId() == -1) {
-                println("Chase sprite is disabled, interacting with the nearest 'Mystery remains'.");
-                SceneObject mysteryRemains = SceneObjectQuery.newQuery()
-                        .name("Mystery remains")
-                        .option("Excavate")
-                        .results()
-                        .nearest();
+            interactWithNearestMysteryRemains(player);
+        }
+    }
 
-                if (mysteryRemains != null) {
-                    println("Interacting with 'Mystery remains'.");
-                    mysteryRemains.interact("Excavate");
-                    Execution.delay(random.nextLong(3000, 5000));
-                } else {
-                    println("No 'Mystery remains' found to interact with.");
-                }
-            } else {
+    private void interactWithSpotAnimation(Player player, SpotAnimation archaeologySpot) {
+        Coordinate spotCoordinate = archaeologySpot.getCoordinate();
+        double distanceToSpot = player.getCoordinate().distanceTo(spotCoordinate);
+
+        if (player.getAnimationId() == 33350 && distanceToSpot <= 1) {
+            Execution.delay(random.nextLong(2000, 4000));
+            return;
+        }
+
+        if (player.getAnimationId() == -1 || distanceToSpot > 1) {
+            println("Interacting with 'Mystery remains' at: " + spotCoordinate);
+            SceneObject mysteryRemains = SceneObjectQuery.newQuery().name("Mystery remains").option("Excavate").on(spotCoordinate).results().nearest();
+            if (mysteryRemains != null) {
+                mysteryRemains.interact("Excavate");
                 Execution.delay(random.nextLong(3000, 5000));
             }
+        }
+    }
+
+    private void interactWithNearestAncientRemains() {
+        println("No archaeology SpotAnimation found nearby. Interacting with 'Ancient remains'.");
+        SceneObject mysteryRemains = SceneObjectQuery.newQuery().name("Mystery remains").option("Excavate").results().nearest();
+        if (mysteryRemains != null) {
+            mysteryRemains.interact("Excavate");
+            Execution.delay(random.nextLong(3000, 5000));
+        }
+    }
+
+    private void interactWithNearestMysteryRemains(Player player) {
+        if (player.getAnimationId() == -1) {
+            println("Interacting with the nearest 'Mystery remains'.");
+            interactWithNearestAncientRemains();
+        } else {
+            Execution.delay(random.nextLong(3000, 5000));
         }
     }
 
@@ -573,7 +698,74 @@ public class CoaezHalloweenEvent extends LoopingScript {
         return true;
     }
 
-    private void handleSecondCollectionSubmission() {
+    private void handleCollectionSubmission(Player player) {
+        if (!eepArea.contains(player.getCoordinate())) {
+            println("Moving to Eep...");
+            Movement.walkTo(eepLocation.getX(), eepLocation.getY(), true);
+            Execution.delayUntil(random.nextLong(2000, 3000), player::isMoving);
+            Execution.delayUntil(random.nextLong(6000, 10000),() -> !player.isMoving());
+        }
+
+        println("Found collection items in backpack. Finding NPC 'Eep'...");
+        EntityResultSet<Npc> eepResults = NpcQuery.newQuery().name("Eep").option("Talk to").results();
+        Npc eep = eepResults.nearest();
+
+        if (eep != null) {
+            println("Interacting with NPC 'Eep'...");
+            int attempts = 0;
+            boolean interactionSuccess = false;
+
+            while (attempts < 3 && !interactionSuccess) {
+                interactionSuccess = eep.interact("Collections");
+                if (!interactionSuccess) {
+                    println("Failed to interact with NPC, retrying... (" + (attempts + 1) + "/3)");
+                    attempts++;
+                    Execution.delay(random.nextLong(1000, 2000));
+                }
+            }
+
+            if (interactionSuccess) {
+                println("Opening collections window...");
+                if (Execution.delayUntil(10000, () -> Interfaces.isOpen(656))) {
+                    println("Collections interface opened.");
+
+                    while (backpackContainsCollectionItems() && Interfaces.isOpen(656)) {
+                        ResultSet<Component> contributeAllComponent = ComponentQuery.newQuery(656)
+                                .componentIndex(24)
+                                .results();
+
+                        Component confirmButton = contributeAllComponent.first();
+                        if (confirmButton != null && !confirmButton.isHidden()) {
+                            println("Found 'Contribute All' button. Attempting to interact...");
+                            MiniMenu.interact(ComponentAction.COMPONENT.getType(), 1, 0, 42991641);
+                            Execution.delay(random.nextLong(1200, 1800));
+                            println("Collection submitted.");
+                        } else {
+                            println("Failed to find or interact with 'Contribute All' button.");
+                            break;
+                        }
+                    }
+
+                    println("No more collection items in inventory.");
+                } else {
+                    println("Failed to open collections interface.");
+                }
+            } else {
+                println("NPC interaction failed after 3 attempts.");
+            }
+        } else {
+            println("NPC 'Eep' not found.");
+        }
+    }
+
+    private void handleSecondCollectionSubmission(Player player) {
+        if (!eepArea.contains(player.getCoordinate())) {
+            println("Moving to Eep...");
+            Movement.walkTo(eepLocation.getX(), eepLocation.getY(), true);
+            Execution.delayUntil(random.nextLong(2000, 3000), player::isMoving);
+            Execution.delayUntil(random.nextLong(6000, 10000),() -> !player.isMoving());
+        }
+
         println("Found second collection items in backpack. Finding NPC 'Eep'...");
 
         EntityResultSet<Npc> eepResults = NpcQuery.newQuery()
@@ -599,7 +791,7 @@ public class CoaezHalloweenEvent extends LoopingScript {
             if (interactionSuccess) {
                 println("Opening collections window...");
                 if (Execution.delayUntil(15000, () -> Interfaces.isOpen(656))) {
-                    println("Interface 656 opened, switching to second collection...");
+                    println("Collections interface opened, switching to second collection...");
 
                     Execution.delay(random.nextLong(600, 1200));
 
@@ -612,26 +804,28 @@ public class CoaezHalloweenEvent extends LoopingScript {
                         MiniMenu.interact(ComponentAction.COMPONENT.getType(), 1, 1, 42991647);
                         Execution.delay(random.nextLong(1200, 1800));
 
-                        println("Confirming second collection contribution...");
-
-                        ResultSet<Component> contributeAllComponent = ComponentQuery.newQuery(656)
-                                .componentIndex(24)
-                                .results();
-                        Component confirmButton = contributeAllComponent.first();
-                        if (confirmButton != null && !confirmButton.isHidden()) {
-                            println("'Contribute All' button is visible. Attempting to confirm...");
-                            MiniMenu.interact(ComponentAction.COMPONENT.getType(), 1, 0, 42991641);
-                            Execution.delay(random.nextLong(1200, 1800));
-
-                            println("Second collection submitted. Returning to excavation.");
-                        } else {
-                            println("Failed to find or interact with 'Contribute All' button.");
+                        while (backpackContainsCollectionItems() && Interfaces.isOpen(656)) {
+                            ResultSet<Component> contributeAllComponent = ComponentQuery.newQuery(656)
+                                    .componentIndex(24)
+                                    .results();
+                            Component confirmButton = contributeAllComponent.first();
+                            if (confirmButton != null && !confirmButton.isHidden()) {
+                                println("Found 'Contribute All' button. Attempting to confirm...");
+                                MiniMenu.interact(ComponentAction.COMPONENT.getType(), 1, 0, 42991641);
+                                Execution.delay(random.nextLong(1200, 1800));
+                                println("Second collection submitted.");
+                            } else {
+                                println("Failed to find or interact with 'Contribute All' button.");
+                                break;
+                            }
                         }
+
+                        println("No more second collection items in inventory.");
                     } else {
                         println("Failed to find or interact with second collection tab.");
                     }
                 } else {
-                    println("Failed to open interface 656.");
+                    println("Failed to open collections interface.");
                 }
             } else {
                 println("NPC interaction failed after 3 attempts.");
@@ -640,60 +834,6 @@ public class CoaezHalloweenEvent extends LoopingScript {
             println("NPC 'Eep' not found.");
         }
     }
-
-    private void handleCollectionSubmission() {
-        println("Found collection items in backpack. Finding NPC 'Eep'...");
-
-        EntityResultSet<Npc> eepResults = NpcQuery.newQuery()
-                .name("Eep")
-                .option("Talk to")
-                .results();
-        Npc eep = eepResults.nearest();
-
-        if (eep != null) {
-            println("Interacting with NPC 'Eep'...");
-            int attempts = 0;
-            boolean interactionSuccess = false;
-
-            while (attempts < 3 && !interactionSuccess) {
-                interactionSuccess = eep.interact("Collections");
-                if (!interactionSuccess) {
-                    println("Failed to interact with NPC, retrying... (" + (attempts + 1) + "/3)");
-                    attempts++;
-                    Execution.delay(random.nextLong(1000, 2000));
-                }
-            }
-
-            if (interactionSuccess) {
-                println("Opening collections window...");
-                if (Execution.delayUntil(10000, () -> Interfaces.isOpen(656))) {
-                    println("Interface 656 opened, confirming collection submission...");
-
-                    ResultSet<Component> contributeAllComponent = ComponentQuery.newQuery(656)
-                            .componentIndex(24)
-                            .results();
-
-                    Component confirmButton = contributeAllComponent.first();
-                    if (confirmButton != null && !confirmButton.isHidden()) {
-                        println("Found 'Contribute All' button. Attempting to interact...");
-                        MiniMenu.interact(ComponentAction.COMPONENT.getType(), 1, 0, 42991641);
-                        Execution.delay(random.nextLong(1200, 1800));
-
-                        println("Collection submitted. Returning to excavation.");
-                    } else {
-                        println("Failed to find or interact with 'Contribute All' button.");
-                    }
-                } else {
-                    println("Failed to open interface 656.");
-                }
-            } else {
-                println("NPC interaction failed after 3 attempts.");
-            }
-        } else {
-            println("NPC 'Eep' not found.");
-        }
-    }
-
 
 
     public boolean moveTo(Coordinate location) {
