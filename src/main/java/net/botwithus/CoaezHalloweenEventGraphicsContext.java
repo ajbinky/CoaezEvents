@@ -135,7 +135,9 @@ public class CoaezHalloweenEventGraphicsContext extends ScriptGraphicsContext {
             ImGui.SameLine();
             ImGui.SetItemWidth(100);
             coaezHalloweenEvent.ancientRemainsCount = ImGui.InputInt("Identify remains when count reaches", coaezHalloweenEvent.ancientRemainsCount);
-
+            coaezHalloweenEvent.useMaizeLootTokens = ImGui.Checkbox("Redeem loot tokens", coaezHalloweenEvent.useMaizeLootTokens);
+            ImGui.Text("Turn in collection is disabled automatically once we hit points cap.");
+            coaezHalloweenEvent.turnInCollections = ImGui.Checkbox("Turn in collections", coaezHalloweenEvent.turnInCollections);
             ImGui.Separator();
 
             ImGui.Text("Collection Turn-In Settings");

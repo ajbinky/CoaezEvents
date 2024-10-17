@@ -6,6 +6,7 @@ import net.botwithus.rs3.game.*;
 import net.botwithus.rs3.game.actionbar.ActionBar;
 import net.botwithus.rs3.game.hud.interfaces.Component;
 import net.botwithus.rs3.game.hud.interfaces.Interfaces;
+import net.botwithus.rs3.game.inventories.InventoryContainer;
 import net.botwithus.rs3.game.minimenu.MiniMenu;
 import net.botwithus.rs3.game.minimenu.actions.ComponentAction;
 import net.botwithus.rs3.game.movement.Movement;
@@ -78,6 +79,8 @@ public class CoaezHalloweenEvent extends LoopingScript {
     public int maxWaitTime = 60;
     public int tomeCount = 20;
     public boolean handInTomes = false;
+    public boolean useMaizeLootTokens;
+    public boolean turnInCollections = true;
 
 //    private final Coordinate mazeStartLocation = new Coordinate(624,1715,0);
 //    private final Area mazeEntranceArea = new Area.Circular(mazeStartLocation, 5);
@@ -118,9 +121,21 @@ public class CoaezHalloweenEvent extends LoopingScript {
     public CoaezHalloweenEvent(String s, ScriptConfig config, ScriptDefinition scriptDefinition) {
         super(s, config, scriptDefinition);
         this.config = config;
+        subscribe(ChatMessageEvent.class, this::onChatMessage);
+
         this.sgc = new CoaezHalloweenEventGraphicsContext(this.getConsole(), this);
+        
 
     }
+
+    private void onChatMessage(ChatMessageEvent chatMessageEvent) {
+        String message = chatMessageEvent.getMessage();
+        if (message.contains("You have reached the Spooky token soft cap")) {
+            println("Reached max points, stopping collection turn-ins.");
+            turnInCollections = false;
+        }
+    }
+
 
     @Override
     public void onLoop() {
@@ -130,8 +145,11 @@ public class CoaezHalloweenEvent extends LoopingScript {
             Execution.delay(random.nextLong(2500, 5500));
             return;
         }
-
         sgc.saveConfig();
+
+        if(useMaizeLootTokens){
+            handleMaizeMazeLootTokens();
+        }
         switch (botState) {
             case TURNINCOLLECTIONS:
                 handleCollectionTurnIn(player);
@@ -151,6 +169,20 @@ public class CoaezHalloweenEvent extends LoopingScript {
             default:
                 Execution.delay(random.nextLong(1000, 3000));
                 break;
+        }
+    }
+
+    private void handleMaizeMazeLootTokens() {
+        String[] collectionItems = {
+                "Maize Maze loot token (double)", "Maize Maze loot token (triple)"
+        };
+
+        for (String item : collectionItems) {
+            if (Backpack.contains(item)) {
+                Backpack.interact(item, "Redeem All");
+                Execution.delay(random.nextLong(600, 1200));
+                break;
+            }
         }
     }
 
@@ -313,9 +345,11 @@ public class CoaezHalloweenEvent extends LoopingScript {
             Execution.delay(random.nextLong(1200, 1800));
         }
 
-        if (backpackContainsSecondCollectionItems()) {
-            handleSecondCollectionSubmission(player);
-            return;
+        if (turnInCollections) {
+            if (backpackContainsSecondCollectionItems()) {
+                handleSecondCollectionSubmission(player);
+                return;
+            }
         }
 
         if (Backpack.isFull()) {
@@ -399,9 +433,11 @@ public class CoaezHalloweenEvent extends LoopingScript {
             Execution.delay(random.nextLong(1200, 1800));
         }
 
-        if (backpackContainsSecondCollectionItems()) {
-            handleSecondCollectionSubmission(player);
-            return;
+        if (turnInCollections) {
+            if (backpackContainsSecondCollectionItems()) {
+                handleSecondCollectionSubmission(player);
+                return;
+            }
         }
 
         if (Backpack.isFull()) {
@@ -475,14 +511,16 @@ public class CoaezHalloweenEvent extends LoopingScript {
 
         handleAncientRemains();
 
-        if (backpackContainsCollectionItems()) {
-            handleCollectionSubmission(player);
-            return;
-        }
+        if (turnInCollections) {
+            if (backpackContainsCollectionItems()) {
+                handleCollectionSubmission(player);
+                return;
+            }
 
-        if (backpackContainsSecondCollectionItems()) {
-            handleSecondCollectionSubmission(player);
-            return;
+            if (backpackContainsSecondCollectionItems()) {
+                handleSecondCollectionSubmission(player);
+                return;
+            }
         }
 
         if (Backpack.isFull()) {
@@ -497,6 +535,7 @@ public class CoaezHalloweenEvent extends LoopingScript {
 
         handleChaseSprite(player);
     }
+
 
     private void handleDialogue() {
         if (Interfaces.isOpen(1189)) {
@@ -590,6 +629,7 @@ public class CoaezHalloweenEvent extends LoopingScript {
         if (Backpack.contains("Ancient remains", ancientRemainsCount) && identifyAncientRemains) {
             Backpack.interact("Ancient remains", "Identify all");
             Execution.delay(random.nextLong(1200, 1800));
+
         }
     }
 
