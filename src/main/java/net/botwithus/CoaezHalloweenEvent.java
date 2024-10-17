@@ -634,6 +634,8 @@ public class CoaezHalloweenEvent extends LoopingScript {
         }
     }
 
+
+
     private void interactWithSpotAnimation(Player player, SpotAnimation archaeologySpot) {
         Coordinate spotCoordinate = archaeologySpot.getCoordinate();
         double distanceToSpot = player.getCoordinate().distanceTo(spotCoordinate);
@@ -804,7 +806,7 @@ public class CoaezHalloweenEvent extends LoopingScript {
                         MiniMenu.interact(ComponentAction.COMPONENT.getType(), 1, 1, 42991647);
                         Execution.delay(random.nextLong(1200, 1800));
 
-                        while (backpackContainsCollectionItems() && Interfaces.isOpen(656)) {
+                        while (backpackContainsSecondCollectionItems()) {
                             ResultSet<Component> contributeAllComponent = ComponentQuery.newQuery(656)
                                     .componentIndex(24)
                                     .results();
