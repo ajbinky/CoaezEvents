@@ -81,7 +81,9 @@ public class CoaezHalloweenEvent extends LoopingScript {
     public boolean handInTomes = false;
     public boolean useMaizeLootTokens;
     public boolean turnInCollections = true;
-
+    private long lastAnimationTime = 0;
+    private final int ANIMATION_ID_RITUAL = 6298;
+    private final long RITUAL_TIMEOUT_MS = 5000;
 //    private final Coordinate mazeStartLocation = new Coordinate(624,1715,0);
 //    private final Area mazeEntranceArea = new Area.Circular(mazeStartLocation, 5);
 //    boolean usedDoor = false;
@@ -419,16 +421,14 @@ public class CoaezHalloweenEvent extends LoopingScript {
         }
     }
 
-
-
     private void handleSummoning(Player player) {
 
-        if(!summoningArea.contains(player)){
+        if (!summoningArea.contains(player)) {
             println("Moving to summoning area");
             moveTo(summoningArea.getRandomWalkableCoordinate());
         }
 
-        if(Backpack.contains("Ancient remains", ancientRemainsCount) && identifyAncientRemains){
+        if (Backpack.contains("Ancient remains", ancientRemainsCount) && identifyAncientRemains) {
             Backpack.interact("Ancient remains", "Identify all");
             Execution.delay(random.nextLong(1200, 1800));
         }
@@ -452,7 +452,7 @@ public class CoaezHalloweenEvent extends LoopingScript {
                 println("Player is in the bank area, opening the bank...");
                 Bank.open();
                 Execution.delayUntil(10000, Bank::isOpen);
-                if(Bank.isOpen()){
+                if (Bank.isOpen()) {
                     Execution.delay(random.nextLong(1000, 2000));
                     Bank.depositAllExcept("Complete tome");
                     Bank.close();
@@ -482,22 +482,18 @@ public class CoaezHalloweenEvent extends LoopingScript {
         SceneObject summoningCircle = summoningCircleResults.nearest();
 
         if (summoningCircle != null) {
-            if (player.getAnimationId() == 35520) {
-                unlitCandle = unlitCandleResults.nearest();
-                if (unlitCandle != null) {
-                    println("Lighting candle during ritual...");
-                    unlitCandle.interact("Light");
-                    Execution.delay(random.nextLong(2000, 4000));
-                    summoningCircle.interact("Summon");
-                    Execution.delay(random.nextLong(3000, 5000));
-                    return;
-                }
-            }
+            long currentTime = System.currentTimeMillis();
 
-            if(player.getAnimationId() != 35520) {
-                println("Starting summoning ritual...");
-                summoningCircle.interact("Summon");
-                Execution.delayUntil(2000, () -> player.getAnimationId() == 35520);
+            if (player.getAnimationId() == ANIMATION_ID_RITUAL) {
+                println("Player is already performing the ritual...");
+                lastAnimationTime = currentTime;
+            } else {
+                if (currentTime - lastAnimationTime > RITUAL_TIMEOUT_MS) {
+                    println("Ritual not detected for over 5 seconds. Restarting the summoning ritual...");
+                    summoningCircle.interact("Summon");
+                    Execution.delayUntil(4000, () -> player.getAnimationId() == ANIMATION_ID_RITUAL);
+                    lastAnimationTime = currentTime;
+                }
             }
         }
     }
