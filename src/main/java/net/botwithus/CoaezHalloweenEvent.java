@@ -247,7 +247,7 @@ public class CoaezHalloweenEvent extends LoopingScript {
                         }
                         if(MiniMenu.interact(SelectableAction.SELECT_NPC.getType(), boss.getId(), boss.getCoordinate().getX(), boss.getCoordinate().getY())){
                             println("Selected boss");
-                            Execution.delay(random.nextLong(2000, 2400));
+                            Execution.delay(random.nextLong(3000, 4000));
                         }
                     });
                 } else {
