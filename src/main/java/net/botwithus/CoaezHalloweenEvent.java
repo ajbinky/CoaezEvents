@@ -92,6 +92,7 @@ public class CoaezHalloweenEvent extends LoopingScript {
     private final Coordinate implingCoords = new Coordinate(707,1726,0);
     private final Area implingArea = new Area.Rectangular(new Coordinate(698,1726,0), new Coordinate(712,1731,0));
     private final Area innerBossArea = new Area.Rectangular(new Coordinate(702,1732,0), new Coordinate(178,1736,0));
+    private final Area fenceArea = new Area.Rectangular(new Coordinate(708, 1731, 0), new Coordinate(711, 1732, 0));
 
     enum TransferOptionType {
         ONE(2, 33882205),
@@ -213,12 +214,13 @@ public class CoaezHalloweenEvent extends LoopingScript {
         } else {
             Execution.delayUntil(4000, () -> getLocalPlayer().getAnimationId() == -1);
             println("Collected 10 Bone clubs. Preparing to jump over the fence...");
-            EntityResultSet<SceneObject> fenceResults = SceneObjectQuery.newQuery().name("Fence obstacle").option("Jump over").results();
+            EntityResultSet<SceneObject> fenceResults = SceneObjectQuery.newQuery().name("Fence obstacle").option("Jump over").inside(fenceArea).results();
             SceneObject fence = fenceResults.nearest();
 
             if (fence != null && fence.interact("Jump over")) {
                 println("Jumping over the fence...");
-                Execution.delayUntil(10000, () -> innerBossArea.contains(player));
+                Execution.delayUntil(8000, () -> player.getAnimationId() == 19972);
+                Execution.delayUntil(2000, () -> player.getAnimationId() != 19972);
             }
 
             println("Preparing to fight the boss...");
@@ -232,7 +234,7 @@ public class CoaezHalloweenEvent extends LoopingScript {
                 if (boss != null) {
                     if (boss.interact("Spook (melee)")) {
                         println("Spooked Skaraxxi");
-                        Execution.delay(random.nextLong(2000, 3000));
+                        Execution.delay(random.nextLong(1000, 1200));
                     }
                 } else {
                     println("Could not find Skaraxxi!");
