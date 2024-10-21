@@ -245,14 +245,14 @@ public class CoaezHalloweenEvent extends LoopingScript {
 
                         if (MiniMenu.interact(SelectableAction.SELECTABLE_COMPONENT.getType(), 0, boneClub.getSlot(), 96534533)) {
                             println("Selected Bone Club");
-                            Execution.delay(random.nextLong(100, 300));
+                            Execution.delay(random.nextLong(100, 150));
                         }
 
                         if (MiniMenu.interact(SelectableAction.SELECT_NPC.getType(), boss.getId(), boss.getCoordinate().getX(), boss.getCoordinate().getY())) {
                             println("Selected boss Skaraxxi");
                         }
 
-                        Execution.delay(random.nextLong(2500, 3500));
+                        Execution.delay(random.nextLong(600, 1200));
                     }
                 } else {
                     println("Could not find Skaraxxi or no Bone Clubs available!");
