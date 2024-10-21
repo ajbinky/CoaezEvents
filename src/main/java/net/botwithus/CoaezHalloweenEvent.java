@@ -90,8 +90,8 @@ public class CoaezHalloweenEvent extends LoopingScript {
     boolean usedDoor = false;
 
     private final Coordinate implingCoords = new Coordinate(707,1726,0);
-    private final Area implingArea = new Area.Rectangular(new Coordinate(701,1726,0), new Coordinate(712,1731,0));
-    private final Area innerBossArea = new Area.Rectangular(new Coordinate(704,1726,0), new Coordinate(710,1727,0));
+    private final Area implingArea = new Area.Rectangular(new Coordinate(698,1726,0), new Coordinate(712,1731,0));
+    private final Area innerBossArea = new Area.Rectangular(new Coordinate(702,1732,0), new Coordinate(178,1736,0));
 
     enum TransferOptionType {
         ONE(2, 33882205),
@@ -205,10 +205,10 @@ public class CoaezHalloweenEvent extends LoopingScript {
             if (impling != null && impling.interact("Catch")) {
                 println("Catching a Zombie impling...");
                 Execution.delay(random.nextLong(1200, 2000));
-                Execution.delayUntil(3000, () -> Backpack.contains("Bone club", 1));
+                Execution.delayUntil(3000, () -> player.getAnimationId() == -1);
             } else {
                 println("No Zombie impling found, waiting...");
-                Execution.delay(random.nextLong(200, 600));
+                Execution.delay(random.nextLong(100, 200));
             }
         } else {
             Execution.delayUntil(4000, () -> getLocalPlayer().getAnimationId() == -1);
@@ -218,37 +218,24 @@ public class CoaezHalloweenEvent extends LoopingScript {
 
             if (fence != null && fence.interact("Jump over")) {
                 println("Jumping over the fence...");
-                Execution.delayUntil(10000, () -> getLocalPlayer().getAnimationId() != -1 );
+                Execution.delayUntil(10000, () -> innerBossArea.contains(player));
             }
 
             println("Preparing to fight the boss...");
 
             while (Backpack.contains("Bone club")) {
-                println("Using Bone Clubs on the boss...");
+                println("Using Bone Clubs to spook the boss...");
 
-                ResultSet<Item> boneClubs = InventoryItemQuery.newQuery().name("Bone club").results();
-                EntityResultSet<Npc> bossResults = NpcQuery.newQuery().byType(31304).results();
+                EntityResultSet<Npc> bossResults = NpcQuery.newQuery().name("Skaraxxi").option("Spook (melee)").results();
                 Npc boss = bossResults.nearest();
 
-                if (boss != null && !boneClubs.isEmpty()) {
-                    Item boneClub = boneClubs.first();
-
-                    if (boneClub != null) {
-                        println("Using Bone Club from slot: " + boneClub.getSlot());
-
-                        if (MiniMenu.interact(SelectableAction.SELECTABLE_COMPONENT.getType(), 0, boneClub.getSlot(), 96534533)) {
-                            println("Selected Bone Club");
-                            Execution.delay(random.nextLong(100, 150));
-                        }
-
-                        if (MiniMenu.interact(SelectableAction.SELECT_NPC.getType(), boss.getId(), boss.getCoordinate().getX(), boss.getCoordinate().getY())) {
-                            println("Selected boss Skaraxxi");
-                        }
-
-                        Execution.delay(random.nextLong(600, 1200));
+                if (boss != null) {
+                    if (boss.interact("Spook (melee)")) {
+                        println("Spooked Skaraxxi");
+                        Execution.delay(random.nextLong(2000, 3000));
                     }
                 } else {
-                    println("Could not find Skaraxxi or no Bone Clubs available!");
+                    println("Could not find Skaraxxi!");
                     break;
                 }
             }
