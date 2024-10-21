@@ -192,13 +192,6 @@ public class CoaezHalloweenEvent extends LoopingScript {
             usedDoor = true;
         }
 
-        if (implingArea.distanceTo(player.getCoordinate()) <= 10 && !implingArea.contains(player.getCoordinate())) {
-            println("Walking into the impling area...");
-            Movement.walkTo(implingCoords.getX(), implingCoords.getY(), false);
-            Execution.delayUntil(random.nextLong(3000, 5000), () -> implingArea.contains(player.getCoordinate()) );
-            return;
-        }
-
         if (!implingArea.contains(player.getCoordinate())) {
             println("Not in the impling area, navigate to the area manually.");
             Execution.delay(random.nextLong(2000, 3000));
