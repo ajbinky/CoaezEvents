@@ -57,6 +57,20 @@ public class CoaezHalloweenEvent extends LoopingScript {
     private final Coordinate eepLocation = new Coordinate(580,1736,0);
     private final Area eepArea = new Area.Circular(eepLocation, 10);
 
+
+    private static final int MAZE_PORTAL = 131372;
+    private static final int BONE_CLUB = 57608;
+    private static final int ZOMBIE_IMPLING = 31307;
+    private static final int ZOMBIE = 31305;
+    private static final int SKELETON = 31306;
+    private static final int GATE = 131376;
+    private static final int FENCE = 131377;
+    private static final int SKARAXXI = 31304;
+    private static final Coordinate ENTRANCE_MIN = new Coordinate(698, 1726, 0);
+    private static final Coordinate ENTRANCE_MAX = new Coordinate(703, 1727, 0);
+
+    public boolean forceCollectionTurnIn = false;
+
     public enum BotState {
         SUMMONING,
         ARCHAEOLOGY,
@@ -144,6 +158,12 @@ public class CoaezHalloweenEvent extends LoopingScript {
             Execution.delay(random.nextLong(2500, 5500));
             return;
         }
+
+        if(forceCollectionTurnIn) {
+            handleForceCollectionTurnIn(player);
+            return;
+        }
+
         sgc.saveConfig();
 
         if(useMaizeLootTokens){
@@ -151,7 +171,7 @@ public class CoaezHalloweenEvent extends LoopingScript {
         }
         switch (botState) {
             case MAZE:
-                handleMaze(player);
+                handleMaize();
                 return;
             case TURNINCOLLECTIONS:
                 handleCollectionTurnIn(player);
@@ -174,80 +194,202 @@ public class CoaezHalloweenEvent extends LoopingScript {
         }
     }
 
-    private void handleMaze(Player player) {
-        if (!mazeEntranceArea.contains(player.getCoordinate()) && !usedDoor) {
-            println("Moving to maze entrance at " + mazeEntranceArea);
-            Movement.walkTo(mazeEntranceArea.getCoordinate().getX(), mazeEntranceArea.getCoordinate().getY(), false);
-            Execution.delayUntil(5000, () -> mazeEntranceArea.contains(player));
-            return;
-        }
+    private boolean handleMaize() {
+        Player player = getLocalPlayer();
+        if (player == null) return false;
 
-        EntityResultSet<SceneObject> mazeDoorResults = SceneObjectQuery.newQuery().name("Maize Maze portal").option("Enter").results();
-        SceneObject mazeEntranceDoor = mazeDoorResults.nearest();
-
-        if (mazeEntranceDoor != null && !usedDoor) {
-            println("Entering the maze...");
-            mazeEntranceDoor.interact("Enter");
-            Execution.delayUntil(5000, () -> player.getCoordinate().getRegionId() != 2330);
-            Execution.delay(random.nextLong(2000, 3000));
-            usedDoor = true;
-        }
-
-        if (!implingArea.contains(player.getCoordinate())) {
-            println("Not in the impling area, navigate to the area manually.");
-            Execution.delay(random.nextLong(2000, 3000));
-            return;
-        }
-
-        if (!Backpack.contains("Bone club", 10)) {
-            EntityResultSet<Npc> results = NpcQuery.newQuery().name("Zombie impling").option("Catch").inside(implingArea).results();
-            Npc impling = results.nearest();
-
-            if (impling != null && impling.interact("Catch")) {
-                println("Catching a Zombie impling...");
-                Execution.delay(random.nextLong(1200, 2000));
-                Execution.delayUntil(3000, () -> player.getAnimationId() == -1);
-            } else {
-                println("No Zombie impling found, waiting...");
-                Execution.delay(random.nextLong(100, 200));
+        if (!SceneObjectQuery.newQuery().ids(MAZE_PORTAL).results().isEmpty()) {
+            println("Entering the maze");
+            SceneObject portal = SceneObjectQuery.newQuery()
+                    .ids(MAZE_PORTAL)
+                    .results()
+                    .nearest();
+            if (portal != null) {
+                portal.interact("Enter");
+                Execution.delayUntil(random.nextLong(4000, 6000), () -> !SceneObjectQuery.newQuery().ids(MAZE_PORTAL).results().isEmpty());
             }
+        }
+
+        println("Waiting for first 3 zombie implings");
+        while (!Backpack.contains(BONE_CLUB, 3)) {
+            Npc impling = NpcQuery.newQuery()
+                    .id(ZOMBIE_IMPLING)
+                    .results()
+                    .nearest();
+
+            if (impling != null) {
+                impling.interact("Catch");
+                waitForStillness();
+            }
+
+            Execution.delay(random.nextLong(1000, 1500));
+        }
+
+        boolean lookForGate = false;
+        Area targetArea;
+
+        Coordinate playerPos = player.getServerCoordinate();
+        Coordinate gatePos = new Coordinate(720, 1726, 0);
+        Coordinate entrancePos = new Coordinate(698, 1727, 0);
+
+        if (playerPos.distanceTo(gatePos) < playerPos.distanceTo(entrancePos)) {
+            targetArea = new Area.Rectangular(new Coordinate(717, 1726, 0), new Coordinate(720, 1727, 0));
+            lookForGate = true;
         } else {
-            Execution.delayUntil(4000, () -> getLocalPlayer().getAnimationId() == -1);
-            println("Collected 10 Bone clubs. Preparing to jump over the fence...");
-            EntityResultSet<SceneObject> fenceResults = SceneObjectQuery.newQuery().name("Fence obstacle").option("Jump over").inside(fenceArea).results();
-            SceneObject fence = fenceResults.nearest();
+            targetArea = new Area.Rectangular(ENTRANCE_MIN, ENTRANCE_MAX);
+        }
 
-            if (fence != null && fence.interact("Jump over")) {
-                println("Jumping over the fence...");
-                Execution.delayUntil(8000, () -> player.getAnimationId() == 19972);
-                Execution.delayUntil(2000, () -> player.getAnimationId() != 19972);
-            }
+        while (!targetArea.contains(player)) {
 
-            println("Preparing to fight the boss...");
+            if (!player.isMoving() && player.getAnimationId() != 1) {
+                Npc enemy = NpcQuery.newQuery()
+                        .id(ZOMBIE).id(SKELETON)
+                        .results()
+                        .nearest();
 
-            while (Backpack.contains("Bone club")) {
-                println("Using Bone Clubs to spook the boss...");
+                if (enemy != null && enemy.distanceTo(player) <= 2) {
+                    println("Spooking enemy!");
+                    enemy.interact("Spook");
+                    waitForStillness();
+                }
 
-                EntityResultSet<Npc> bossResults = NpcQuery.newQuery().name("Skaraxxi").option("Spook (melee)").results();
-                Npc boss = bossResults.nearest();
+                Coordinate destination = targetArea.getRandomWalkableCoordinate();
+                println("Navigating to " + destination);
+                Movement.walkTo(destination.getX(), destination.getY(), false);
 
-                if (boss != null) {
-                    if (boss.interact("Spook (melee)")) {
-                        println("Spooked Skaraxxi");
-                        Execution.delay(random.nextLong(1000, 1200));
-                    }
-                } else {
-                    println("Could not find Skaraxxi!");
-                    break;
+                // Check for implings while moving
+                Npc impling = NpcQuery.newQuery()
+                        .id(ZOMBIE_IMPLING)
+                        .results()
+                        .nearest();
+
+                if (impling != null && impling.distanceTo(player) <= 1) {
+                    println("Catching zombie impling!");
+                    impling.interact("Catch");
+                    Execution.delay(random.nextLong(500, 1000));
                 }
             }
 
-            println("Out of Bone Clubs or boss defeated!");
-            Execution.delay(random.nextLong(5000, 8000));
-            usedDoor = false;
+            Execution.delay(random.nextLong(250, 1000));
+        }
+
+        if (lookForGate) {
+            SceneObject gate = SceneObjectQuery.newQuery()
+                    .ids(GATE)
+                    .results()
+                    .nearest();
+
+            if (gate != null) {
+                println("Jumping main gate!");
+                gate.interact("Jump-over");
+                waitForStillness();
+            } else {
+                targetArea = new Area.Rectangular(ENTRANCE_MIN, ENTRANCE_MAX);
+                while (!targetArea.contains(player)) {
+                    navigateWithEnemyAvoidance(player, targetArea);
+                }
+            }
+
+            Execution.delay(random.nextLong(1000, 1200));
+        }
+
+        println("Arrived in boss area!");
+
+        if (!Backpack.contains(BONE_CLUB, 10)) {
+            println("Going to catch remaining implings!");
+            Area implingArea = new Area.Rectangular(
+                    new Coordinate(700, 1726, 0),
+                    new Coordinate(707, 1727, 0)
+            );
+            Movement.walkTo(implingArea.getCoordinate().getX(), implingArea.getCoordinate().getY(), false);
+            waitForStillness();
+
+            while (!Backpack.contains(BONE_CLUB, 10)) {
+
+                Npc impling = NpcQuery.newQuery()
+                        .id(ZOMBIE_IMPLING)
+                        .inside(implingArea)
+                        .results()
+                        .nearest();
+
+                if (impling != null) {
+                    impling.interact("Catch");
+                    waitForStillness();
+                }
+
+                Execution.delay(random.nextLong(250, 1000));
+            }
+        }
+
+        println("Ready to fight the boss!");
+        SceneObject fence = SceneObjectQuery.newQuery()
+                .ids(FENCE)
+                .results()
+                .nearest();
+
+        if (fence != null) {
+            fence.interact("Jump-over");
+            waitForStillness();
+
+            while (Backpack.contains(BONE_CLUB,10)) {
+
+                Npc boss = NpcQuery.newQuery()
+                        .id(SKARAXXI)
+                        .results()
+                        .nearest();
+
+                if (boss != null) {
+                    boss.interact("Spook");
+                    Execution.delay(random.nextLong(500, 1000));
+                }
+            }
+
+            println("The boss is dead!");
+            Execution.delay(random.nextLong(500, 1000));
+        }
+
+        return true;
+    }
+
+    private void waitForStillness() {
+        Execution.delay(random.nextLong(1500, 2000));
+        Player player = getLocalPlayer();
+        while (player != null && (player.isMoving() || player.getAnimationId() != -1)) {
+            Execution.delay(random.nextLong(500, 1000));
         }
     }
 
+    private void navigateWithEnemyAvoidance(Player player, Area targetArea) {
+        if (!player.isMoving() && player.getAnimationId() != -1) {
+            Npc enemy = NpcQuery.newQuery()
+                    .id(ZOMBIE).id(SKELETON)
+                    .results()
+                    .nearest();
+
+            if (enemy != null && enemy.distanceTo(player) <= 2) {
+                println("Spooking enemy!");
+                enemy.interact("Spook");
+                Execution.delay(random.nextLong(2500, 3000));
+            }
+
+            Coordinate destination = targetArea.getRandomWalkableCoordinate();
+            Movement.walkTo(destination.getX(), destination.getY(), false);
+            println("Navigating to " + destination);
+
+            Npc impling = NpcQuery.newQuery()
+                    .id(ZOMBIE_IMPLING)
+                    .results()
+                    .nearest();
+
+            if (impling != null) {
+                println("Catching zombie impling!");
+                impling.interact("Catch");
+                Execution.delay(random.nextLong(500, 1000));
+            }
+        }
+
+        Execution.delay(random.nextLong(250, 1000));
+    }
 
     private void handleMaizeMazeLootTokens() {
         String[] collectionItems = {
@@ -262,7 +404,6 @@ public class CoaezHalloweenEvent extends LoopingScript {
             }
         }
     }
-
 
     private void handleCollectionTurnIn(Player player) {
 
@@ -345,7 +486,6 @@ public class CoaezHalloweenEvent extends LoopingScript {
         println("Finished turning in collections.");
         setBotState(BotState.IDLE);
     }
-
 
     private int calculateAvailableCollections(String[] collectionItems, int collectionItemCount) {
         int minAvailable = Integer.MAX_VALUE;
@@ -946,6 +1086,89 @@ public class CoaezHalloweenEvent extends LoopingScript {
             }
         } else {
             println("NPC 'Eep' not found.");
+        }
+    }
+
+    private void handleForceCollectionTurnIn(Player player) {
+        if(!bankArea.contains(player)){
+            Movement.walkTo(bankLocation.getX(), bankLocation.getY(), true);
+            Execution.delay(random.nextLong(6000, 10000));
+        }
+        if (!Bank.isOpen()) {
+            println("Opening the bank...");
+            Bank.open();
+            Execution.delayUntil(5000, Bank::isOpen);
+            Bank.depositAll();
+            Execution.delay(random.nextLong(600, 1200));
+        }
+
+        String[] firstCollectionItems = {
+                "Soiled storybook", "Polished horn", "Dusty snow globe", "Ruined letter", "Strange coins"
+        };
+
+        String[] secondCollectionItems = {
+                "Ancient skull", "Ancient torso", "Ancient left arm", "Ancient right arm", "Ancient left leg", "Ancient right leg"
+        };
+
+        int firstCollectionItemCount = firstCollectionItems.length;
+        int secondCollectionItemCount = secondCollectionItems.length;
+
+        println("Calculating available collections from the bank...");
+        int firstCollectionAvailable = calculateAvailableCollections(firstCollectionItems, firstCollectionItemCount);
+        int secondCollectionAvailable = calculateAvailableCollections(secondCollectionItems, secondCollectionItemCount);
+
+        println("Collections available - First: " + firstCollectionAvailable + ", Second: " + secondCollectionAvailable);
+
+        if (firstCollectionAvailable == 0 && secondCollectionAvailable == 0) {
+            println("No collections available to turn in.");
+            setBotState(lastActivityState);
+            forceCollectionTurnIn = false;
+            return;
+        }
+
+        int totalFreeSpace = 28;
+        while (firstCollectionAvailable > 0 || secondCollectionAvailable > 0) {
+            int maxCollectionsForFirst = Math.min(totalFreeSpace / firstCollectionItemCount, firstCollectionAvailable);
+            int maxCollectionsForSecond = Math.min(totalFreeSpace / secondCollectionItemCount, secondCollectionAvailable);
+
+            int collectionsToWithdrawFirst = Math.min(maxCollectionsForFirst, totalFreeSpace / firstCollectionItemCount);
+            int collectionsToWithdrawSecond = Math.min(maxCollectionsForSecond, (totalFreeSpace - collectionsToWithdrawFirst * firstCollectionItemCount) / secondCollectionItemCount);
+
+            if (collectionsToWithdrawFirst > 0) {
+                withdrawMaxCollectionItems(firstCollectionItems, collectionsToWithdrawFirst);
+                firstCollectionAvailable -= collectionsToWithdrawFirst;
+            }
+
+            if (collectionsToWithdrawSecond > 0) {
+                withdrawMaxCollectionItems(secondCollectionItems, collectionsToWithdrawSecond);
+                secondCollectionAvailable -= collectionsToWithdrawSecond;
+            }
+
+            Bank.close();
+
+            if (collectionsToWithdrawFirst > 0) {
+                handleCollectionSubmission(player);
+            }
+
+            if (collectionsToWithdrawSecond > 0) {
+                handleSecondCollectionSubmission(player);
+            }
+
+            if (firstCollectionAvailable == 0 && secondCollectionAvailable == 0) {
+                println("All collections turned in.");
+                setBotState(lastActivityState);
+                forceCollectionTurnIn = false;
+                return;
+            }
+
+            if(!bankArea.contains(player)){
+                Movement.walkTo(bankLocation.getX(), bankLocation.getY(), true);
+                Execution.delay(random.nextLong(6000, 10000));
+            }
+            if (!Bank.isOpen()) {
+                Bank.open();
+                Execution.delayUntil(5000, Bank::isOpen);
+            }
         }
     }
 

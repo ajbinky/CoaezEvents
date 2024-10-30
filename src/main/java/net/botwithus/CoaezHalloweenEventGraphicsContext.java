@@ -30,6 +30,7 @@ public class CoaezHalloweenEventGraphicsContext extends ScriptGraphicsContext {
             config.addProperty("thievingDelay", String.valueOf(coaezHalloweenEvent.thievingDelay));
             config.addProperty("handInTomes", String.valueOf(coaezHalloweenEvent.handInTomes));
             config.addProperty("tomeCount", String.valueOf(coaezHalloweenEvent.tomeCount));
+            config.addProperty("forceCollectionTurnIn", String.valueOf(coaezHalloweenEvent.forceCollectionTurnIn));
             config.save();
         }
     }
@@ -39,6 +40,11 @@ public class CoaezHalloweenEventGraphicsContext extends ScriptGraphicsContext {
 
         if (config != null) {
             config.load();
+
+            String forceCollectionTurnInValue = config.getProperty("forceCollectionTurnIn");
+            if (forceCollectionTurnInValue != null) {
+                coaezHalloweenEvent.forceCollectionTurnIn = Boolean.parseBoolean(forceCollectionTurnInValue);
+            }
 
             String handInTomes = config.getProperty("handInTomes");
             if (handInTomes != null) {
@@ -138,17 +144,18 @@ public class CoaezHalloweenEventGraphicsContext extends ScriptGraphicsContext {
             coaezHalloweenEvent.useMaizeLootTokens = ImGui.Checkbox("Redeem loot tokens", coaezHalloweenEvent.useMaizeLootTokens);
             ImGui.Text("Turn in collection is disabled automatically once we hit points cap.");
             coaezHalloweenEvent.turnInCollections = ImGui.Checkbox("Turn in collections", coaezHalloweenEvent.turnInCollections);
+            ImGui.Text("Force Collection Turn-in");
+            ImGui.Text("This will turn in all available collections regardless of token cap.");
             ImGui.Separator();
 
             ImGui.Text("Collection Turn-In Settings");
-
             if (ImGui.Button("Enable Turn in collections")) {
                 coaezHalloweenEvent.setBotState(CoaezHalloweenEvent.BotState.TURNINCOLLECTIONS);
                 coaezHalloweenEvent.lastActivityState = CoaezHalloweenEvent.BotState.TURNINCOLLECTIONS;
                 coaezHalloweenEvent.getConsole().println("Switched to turning in collections event.");
             }
-            ImGui.Text("Standalone collections turn in. Start near the bank with empty inventory. It will do both collections. Stops when out of items for a full collection.");
-
+            ImGui.Text("Standalone collections turn in. Start near the bank with empty inventory.");
+            coaezHalloweenEvent.forceCollectionTurnIn = ImGui.Checkbox("Force turn in collections (ignores token cap)", coaezHalloweenEvent.forceCollectionTurnIn);
             ImGui.Separator();
 
             ImGui.Text("Pumpkin Event Settings");
