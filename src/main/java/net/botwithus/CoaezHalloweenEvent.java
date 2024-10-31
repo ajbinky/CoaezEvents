@@ -171,7 +171,7 @@ public class CoaezHalloweenEvent extends LoopingScript {
         }
         switch (botState) {
             case MAZE:
-                handleMaize();
+                handleMaze(player);
                 return;
             case TURNINCOLLECTIONS:
                 handleCollectionTurnIn(player);
@@ -194,161 +194,78 @@ public class CoaezHalloweenEvent extends LoopingScript {
         }
     }
 
-    private boolean handleMaize() {
-        Player player = getLocalPlayer();
-        if (player == null) return false;
-
-        if (!SceneObjectQuery.newQuery().ids(MAZE_PORTAL).results().isEmpty()) {
-            println("Entering the maze");
-            SceneObject portal = SceneObjectQuery.newQuery()
-                    .ids(MAZE_PORTAL)
-                    .results()
-                    .nearest();
-            if (portal != null) {
-                portal.interact("Enter");
-                Execution.delayUntil(random.nextLong(4000, 6000), () -> !SceneObjectQuery.newQuery().ids(MAZE_PORTAL).results().isEmpty());
-            }
+    private void handleMaze(Player player) {
+        if (!mazeEntranceArea.contains(player.getCoordinate()) && !usedDoor) {
+            println("Moving to maze entrance at " + mazeEntranceArea);
+            Movement.walkTo(mazeEntranceArea.getCoordinate().getX(), mazeEntranceArea.getCoordinate().getY(), false);
+            Execution.delayUntil(5000, () -> mazeEntranceArea.contains(player));
+            return;
         }
 
-        println("Waiting for first 3 zombie implings");
-        while (!Backpack.contains(BONE_CLUB, 3)) {
-            Npc impling = NpcQuery.newQuery()
-                    .id(ZOMBIE_IMPLING)
-                    .results()
-                    .nearest();
+        EntityResultSet<SceneObject> mazeDoorResults = SceneObjectQuery.newQuery().name("Maize Maze portal").option("Enter").results();
+        SceneObject mazeEntranceDoor = mazeDoorResults.nearest();
 
-            if (impling != null) {
-                impling.interact("Catch");
-                waitForStillness();
-            }
-
-            Execution.delay(random.nextLong(1000, 1500));
+        if (mazeEntranceDoor != null && !usedDoor) {
+            println("Entering the maze...");
+            mazeEntranceDoor.interact("Enter");
+            Execution.delayUntil(5000, () -> player.getCoordinate().getRegionId() != 2330);
+            Execution.delay(random.nextLong(2000, 3000));
+            usedDoor = true;
         }
 
-        boolean lookForGate = false;
-        Area targetArea;
-
-        Coordinate playerPos = player.getServerCoordinate();
-        Coordinate gatePos = new Coordinate(720, 1726, 0);
-        Coordinate entrancePos = new Coordinate(698, 1727, 0);
-
-        if (playerPos.distanceTo(gatePos) < playerPos.distanceTo(entrancePos)) {
-            targetArea = new Area.Rectangular(new Coordinate(717, 1726, 0), new Coordinate(720, 1727, 0));
-            lookForGate = true;
-        } else {
-            targetArea = new Area.Rectangular(ENTRANCE_MIN, ENTRANCE_MAX);
+        if (!implingArea.contains(player.getCoordinate())) {
+            println("Not in the impling area, navigate to the area manually.");
+            Execution.delay(random.nextLong(2000, 3000));
+            return;
         }
 
-        while (!targetArea.contains(player)) {
+        if (!Backpack.contains("Bone club", 10)) {
+            EntityResultSet<Npc> results = NpcQuery.newQuery().name("Zombie impling").option("Catch").inside(implingArea).results();
+            Npc impling = results.nearest();
 
-            if (!player.isMoving() && player.getAnimationId() != 1) {
-                Npc enemy = NpcQuery.newQuery()
-                        .id(ZOMBIE).id(SKELETON)
-                        .results()
-                        .nearest();
-
-                if (enemy != null && enemy.distanceTo(player) <= 2) {
-                    println("Spooking enemy!");
-                    enemy.interact("Spook");
-                    waitForStillness();
-                }
-
-                Coordinate destination = targetArea.getRandomWalkableCoordinate();
-                println("Navigating to " + destination);
-                Movement.walkTo(destination.getX(), destination.getY(), false);
-
-                // Check for implings while moving
-                Npc impling = NpcQuery.newQuery()
-                        .id(ZOMBIE_IMPLING)
-                        .results()
-                        .nearest();
-
-                if (impling != null && impling.distanceTo(player) <= 1) {
-                    println("Catching zombie impling!");
-                    impling.interact("Catch");
-                    Execution.delay(random.nextLong(500, 1000));
-                }
-            }
-
-            Execution.delay(random.nextLong(250, 1000));
-        }
-
-        if (lookForGate) {
-            SceneObject gate = SceneObjectQuery.newQuery()
-                    .ids(GATE)
-                    .results()
-                    .nearest();
-
-            if (gate != null) {
-                println("Jumping main gate!");
-                gate.interact("Jump-over");
-                waitForStillness();
+            if (impling != null && impling.interact("Catch")) {
+                println("Catching a Zombie impling...");
+                Execution.delay(random.nextLong(1200, 2000));
+                Execution.delayUntil(3000, () -> player.getAnimationId() == -1);
             } else {
-                targetArea = new Area.Rectangular(ENTRANCE_MIN, ENTRANCE_MAX);
-                while (!targetArea.contains(player)) {
-                    navigateWithEnemyAvoidance(player, targetArea);
-                }
+                println("No Zombie impling found, waiting...");
+                Execution.delay(random.nextLong(100, 200));
+            }
+        } else {
+            Execution.delayUntil(4000, () -> getLocalPlayer().getAnimationId() == -1);
+            println("Collected 10 Bone clubs. Preparing to jump over the fence...");
+            EntityResultSet<SceneObject> fenceResults = SceneObjectQuery.newQuery().name("Fence obstacle").option("Jump over").inside(fenceArea).results();
+            SceneObject fence = fenceResults.nearest();
+
+            if (fence != null && fence.interact("Jump over")) {
+                println("Jumping over the fence...");
+                Execution.delayUntil(8000, () -> player.getAnimationId() == 19972);
+                Execution.delayUntil(2000, () -> player.getAnimationId() != 19972);
             }
 
-            Execution.delay(random.nextLong(1000, 1200));
-        }
+            println("Preparing to fight the boss...");
 
-        println("Arrived in boss area!");
+            while (Backpack.contains("Bone club")) {
+                println("Using Bone Clubs to spook the boss...");
 
-        if (!Backpack.contains(BONE_CLUB, 10)) {
-            println("Going to catch remaining implings!");
-            Area implingArea = new Area.Rectangular(
-                    new Coordinate(700, 1726, 0),
-                    new Coordinate(707, 1727, 0)
-            );
-            Movement.walkTo(implingArea.getCoordinate().getX(), implingArea.getCoordinate().getY(), false);
-            waitForStillness();
-
-            while (!Backpack.contains(BONE_CLUB, 10)) {
-
-                Npc impling = NpcQuery.newQuery()
-                        .id(ZOMBIE_IMPLING)
-                        .inside(implingArea)
-                        .results()
-                        .nearest();
-
-                if (impling != null) {
-                    impling.interact("Catch");
-                    waitForStillness();
-                }
-
-                Execution.delay(random.nextLong(250, 1000));
-            }
-        }
-
-        println("Ready to fight the boss!");
-        SceneObject fence = SceneObjectQuery.newQuery()
-                .ids(FENCE)
-                .results()
-                .nearest();
-
-        if (fence != null) {
-            fence.interact("Jump-over");
-            waitForStillness();
-
-            while (Backpack.contains(BONE_CLUB,10)) {
-
-                Npc boss = NpcQuery.newQuery()
-                        .id(SKARAXXI)
-                        .results()
-                        .nearest();
+                EntityResultSet<Npc> bossResults = NpcQuery.newQuery().name("Skaraxxi").option("Spook (melee)").results();
+                Npc boss = bossResults.nearest();
 
                 if (boss != null) {
-                    boss.interact("Spook");
-                    Execution.delay(random.nextLong(500, 1000));
+                    if (boss.interact("Spook (melee)")) {
+                        println("Spooked Skaraxxi");
+                        Execution.delay(random.nextLong(1000, 1200));
+                    }
+                } else {
+                    println("Could not find Skaraxxi!");
+                    break;
                 }
             }
 
-            println("The boss is dead!");
-            Execution.delay(random.nextLong(500, 1000));
+            println("Out of Bone Clubs or boss defeated!");
+            Execution.delay(random.nextLong(5000, 8000));
+            usedDoor = false;
         }
-
-        return true;
     }
 
     private void waitForStillness() {
