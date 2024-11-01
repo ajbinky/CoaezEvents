@@ -135,10 +135,7 @@ public class CoaezHalloweenEvent extends LoopingScript {
         super(s, config, scriptDefinition);
         this.config = config;
         subscribe(ChatMessageEvent.class, this::onChatMessage);
-
         this.sgc = new CoaezHalloweenEventGraphicsContext(this.getConsole(), this);
-        
-
     }
 
     private void onChatMessage(ChatMessageEvent chatMessageEvent) {
@@ -148,7 +145,6 @@ public class CoaezHalloweenEvent extends LoopingScript {
             turnInCollections = false;
         }
     }
-
 
     @Override
     public void onLoop() {
@@ -169,6 +165,7 @@ public class CoaezHalloweenEvent extends LoopingScript {
         if(useMaizeLootTokens){
             handleMaizeMazeLootTokens();
         }
+
         switch (botState) {
             case MAZE:
                 handleMaze(player);
@@ -247,13 +244,12 @@ public class CoaezHalloweenEvent extends LoopingScript {
 
             while (Backpack.contains("Bone club")) {
                 println("Using Bone Clubs to spook the boss...");
-
-                EntityResultSet<Npc> bossResults = NpcQuery.newQuery().name("Skaraxxi").option("Spook (melee)").results();
+                EntityResultSet<Npc> bossResults = NpcQuery.newQuery().name("Solak-o'-lantern").option("Spook (melee)").results();
                 Npc boss = bossResults.nearest();
 
                 if (boss != null) {
                     if (boss.interact("Spook (melee)")) {
-                        println("Spooked Skaraxxi");
+                        println("Spooked Solak");
                         Execution.delay(random.nextLong(1000, 1200));
                     }
                 } else {
@@ -437,7 +433,6 @@ public class CoaezHalloweenEvent extends LoopingScript {
 
         return true;
     }
-
 
     private void handlePumpkin(Player player) {
         println("Handling pumpkin interaction. Interaction count: " + interactionCount + " / " + maxInteractionsBeforePause);
