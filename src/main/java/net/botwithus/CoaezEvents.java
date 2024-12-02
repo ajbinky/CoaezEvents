@@ -123,6 +123,8 @@ public class CoaezEvents extends LoopingScript {
     private static final int UNPAINTED_MARIONETTE = 57928;
     private static final int PAINTED_MARIONETTE = 57929;
     private static final int COMPLETE_MARIONETTE = 57931;
+    private static final int INCOMPLETE_MARIONETTE = 57927;
+
 
     enum TransferOptionType {
         ONE(2, 33882205),
@@ -409,7 +411,6 @@ public class CoaezEvents extends LoopingScript {
     }
 
     private void handleToyCrafting(Player player) {
-
         if (Backpack.contains(COMPLETE_MARIONETTE)) {
             EntityResultSet<Npc> maeveResults = NpcQuery.newQuery()
                     .name("Maeve")
@@ -473,7 +474,10 @@ public class CoaezEvents extends LoopingScript {
             return;
         }
 
-        if (Backpack.isEmpty()) {
+        boolean shouldGetWood = Backpack.isEmpty() || hasOnlySingleMarionette();
+        println("Inventory check - Should get wood: " + shouldGetWood);
+
+        if (shouldGetWood) {
             EntityResultSet<SceneObject> crateResults = SceneObjectQuery.newQuery()
                     .name("Crate of wood")
                     .option("Take from")
@@ -487,6 +491,24 @@ public class CoaezEvents extends LoopingScript {
                 Execution.delay(random.nextLong(600, 2000));
             }
         }
+    }
+
+    private boolean hasOnlySingleMarionette() {
+        int marionettes = 0;
+        for (Item item : Backpack.container().getItems()) {
+            if (item != null) {
+                if (item.getId() == UNPAINTED_MARIONETTE ||
+                        item.getId() == PAINTED_MARIONETTE ||
+                        item.getId() == COMPLETE_MARIONETTE ||
+                        item.getId() == INCOMPLETE_MARIONETTE) {
+                    marionettes++;
+                    println("Found marionette item: " + item.getId());
+                }
+            }
+        }
+
+        println("Found " + marionettes + " marionette items");
+        return marionettes == 1;
     }
 
     private void handleFirWoodcutting(Player player) {
