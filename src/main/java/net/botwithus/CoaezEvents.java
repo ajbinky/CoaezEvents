@@ -117,6 +117,7 @@ public class CoaezEvents extends LoopingScript {
     private boolean needMilk = false;
     private boolean needSugar = false;
     private boolean needChocolate = false;
+    private boolean needSpice = false;
     private long lastSnowballInteraction = -1;
     private long IDLE_TIMEOUT = 3000;
     private static final int UNPAINTED_MARIONETTE = 57928;
@@ -174,6 +175,10 @@ public class CoaezEvents extends LoopingScript {
         else if (message.contains("need another handful of chocolate chunks")) {
             println("Need to add chocolate!");
             needChocolate = true;
+        }
+        else if (message.contains("Flavour's a little plain") || message.contains("add another dash of spice")) {
+            println("Need to add spice!");
+            needSpice = true;
         }
     }
 
@@ -322,6 +327,27 @@ public class CoaezEvents extends LoopingScript {
                 println("No chocolate found!");
             }
         }
+
+        if (needSpice) {
+            println("Need spice, searching...");
+            EntityResultSet<SceneObject> spiceResults = SceneObjectQuery.newQuery()
+                    .name("Spices")
+                    .option("Take")
+                    .results();
+
+            SceneObject spice = spiceResults.nearest();
+            if (spice != null) {
+                println("Found spice at: " + spice.getCoordinate());
+                spice.interact("Take");
+                Execution.delayUntil(5000, () -> Backpack.contains("Spice"));
+                needSpice = false;
+                println("Got spice: " + Backpack.contains("Spice"));
+                return;
+            } else {
+                println("No spice found!");
+            }
+        }
+
 
         // Update last animation time if we're currently animating
         if (player.getAnimationId() != -1) {
