@@ -6,23 +6,19 @@ import net.botwithus.rs3.game.*;
 import net.botwithus.rs3.game.actionbar.ActionBar;
 import net.botwithus.rs3.game.hud.interfaces.Component;
 import net.botwithus.rs3.game.hud.interfaces.Interfaces;
-import net.botwithus.rs3.game.inventories.InventoryContainer;
 import net.botwithus.rs3.game.minimenu.MiniMenu;
 import net.botwithus.rs3.game.minimenu.actions.ComponentAction;
-import net.botwithus.rs3.game.minimenu.actions.SelectableAction;
 import net.botwithus.rs3.game.movement.Movement;
 import net.botwithus.rs3.game.movement.NavPath;
 import net.botwithus.rs3.game.movement.TraverseEvent;
 import net.botwithus.rs3.game.queries.builders.animations.SpotAnimationQuery;
 import net.botwithus.rs3.game.queries.builders.characters.NpcQuery;
 import net.botwithus.rs3.game.queries.builders.components.ComponentQuery;
-import net.botwithus.rs3.game.queries.builders.items.InventoryItemQuery;
 import net.botwithus.rs3.game.queries.builders.objects.SceneObjectQuery;
 import net.botwithus.rs3.game.queries.results.EntityResultSet;
 import net.botwithus.rs3.game.queries.results.ResultSet;
 import net.botwithus.rs3.game.scene.entities.animation.SpotAnimation;
 import net.botwithus.rs3.game.scene.entities.characters.npc.Npc;
-import net.botwithus.rs3.game.scene.entities.characters.player.LocalPlayer;
 import net.botwithus.rs3.game.scene.entities.characters.player.Player;
 import net.botwithus.rs3.game.scene.entities.object.SceneObject;
 import net.botwithus.rs3.script.Execution;
@@ -36,13 +32,13 @@ import java.util.*;
 
 import static net.botwithus.rs3.game.Client.getLocalPlayer;
 
-public class CoaezHalloweenEvent extends LoopingScript {
+public class CoaezEvents extends LoopingScript {
 
     public BotState botState = BotState.IDLE;
     public BotState lastActivityState = BotState.IDLE;
     public final Random random = new Random();
     private ScriptConfig config;
-    public final CoaezHalloweenEventGraphicsContext sgc;
+    public final CoaezEventGraphicsContext sgc;
 
     private final Coordinate bankLocation = new Coordinate(605, 1701, 0);
     private final Coordinate excavationLocation = new Coordinate(574, 1738, 0);
@@ -78,6 +74,11 @@ public class CoaezHalloweenEvent extends LoopingScript {
         PUMPKIN,
         TURNINCOLLECTIONS,
         MAZE,
+        FIR_WOODCUTTING,
+        TOY_CRAFTING,
+        SNOWBALL_FLETCHING,
+        ICE_FISHING,
+        HOT_CHOCOLATE,
         IDLE
     }
 
@@ -108,6 +109,20 @@ public class CoaezHalloweenEvent extends LoopingScript {
     private final Area innerBossArea = new Area.Rectangular(new Coordinate(702,1732,0), new Coordinate(178,1736,0));
     private final Area fenceArea = new Area.Rectangular(new Coordinate(708, 1731, 0), new Coordinate(711, 1732, 0));
 
+
+    private long lastAnimationFletchingTime = 0;
+    private static final int FLETCHING_TIMEOUT = 3000;
+    private long lastAnimationCookingTime = 0;
+    private boolean needFirewood = false;
+    private boolean needMilk = false;
+    private boolean needSugar = false;
+    private boolean needChocolate = false;
+    private long lastSnowballInteraction = -1;
+    private long IDLE_TIMEOUT = 3000;
+    private static final int UNPAINTED_MARIONETTE = 57928;
+    private static final int PAINTED_MARIONETTE = 57929;
+    private static final int COMPLETE_MARIONETTE = 57931;
+
     enum TransferOptionType {
         ONE(2, 33882205),
         FIVE(3, 33882208),
@@ -131,11 +146,11 @@ public class CoaezHalloweenEvent extends LoopingScript {
             return this.varbitValue;
         }
     }
-    public CoaezHalloweenEvent(String s, ScriptConfig config, ScriptDefinition scriptDefinition) {
+    public CoaezEvents(String s, ScriptConfig config, ScriptDefinition scriptDefinition) {
         super(s, config, scriptDefinition);
         this.config = config;
         subscribe(ChatMessageEvent.class, this::onChatMessage);
-        this.sgc = new CoaezHalloweenEventGraphicsContext(this.getConsole(), this);
+        this.sgc = new CoaezEventGraphicsContext(this.getConsole(), this);
     }
 
     private void onChatMessage(ChatMessageEvent chatMessageEvent) {
@@ -144,6 +159,22 @@ public class CoaezHalloweenEvent extends LoopingScript {
             println("Reached max points, stopping collection turn-ins.");
             turnInCollections = false;
         }
+        if (message.contains("Could you fetch some more firewood")) {
+            println("Need to collect firewood!");
+            needFirewood = true;
+        }
+        else if (message.contains("Let's add a splash of milk")) {
+            println("Need to add milk!");
+            needMilk = true;
+        }
+        else if (message.contains("We need a sprinkle of sugar")) {
+            println("Need to add sugar!");
+            needSugar = true;
+        }
+        else if (message.contains("need another handful of chocolate chunks")) {
+            println("Need to add chocolate!");
+            needChocolate = true;
+        }
     }
 
     @Override
@@ -151,10 +182,15 @@ public class CoaezHalloweenEvent extends LoopingScript {
         Player player = getLocalPlayer();
 
         if (player == null || Client.getGameState() != Client.GameState.LOGGED_IN) {
-            Execution.delay(random.nextLong(2500, 5500));
+            Execution.delay(random.nextLong(2500, 5500))    ;
             return;
         }
 
+        ResultSet<Component> results = ComponentQuery.newQuery(1473).componentIndex(5).itemName("Christmas wrapping paper booster").option("Consume").results();
+        Component result = results.first();
+        if(result != null) {
+            result.interact("Consume");
+        }
         if(forceCollectionTurnIn) {
             handleForceCollectionTurnIn(player);
             return;
@@ -167,6 +203,21 @@ public class CoaezHalloweenEvent extends LoopingScript {
         }
 
         switch (botState) {
+            case HOT_CHOCOLATE:
+                handleHotChocolate(player);
+                return;
+            case ICE_FISHING:
+                handleIceFishing(player);
+                return;
+            case SNOWBALL_FLETCHING:
+                handleSnowballFletching(player);
+                return;
+            case FIR_WOODCUTTING:
+                handleFirWoodcutting(player);
+                return;
+            case TOY_CRAFTING:
+                handleToyCrafting(player);
+                return;
             case MAZE:
                 handleMaze(player);
                 return;
@@ -191,6 +242,317 @@ public class CoaezHalloweenEvent extends LoopingScript {
         }
     }
 
+    private void handleHotChocolate(Player player) {
+        if (needFirewood) {
+            println("Need firewood, searching...");
+            EntityResultSet<SceneObject> firewoodResults = SceneObjectQuery.newQuery()
+                    .name("Firewood")
+                    .option("Take")
+                    .results();
+
+            SceneObject firewood = firewoodResults.nearest();
+            if (firewood != null) {
+                println("Found firewood at: " + firewood.getCoordinate());
+                firewood.interact("Take");
+                Execution.delayUntil(5000, () -> Backpack.contains("Firewood"));
+                needFirewood = false;
+                println("Got firewood: " + Backpack.contains("Firewood"));
+                return;
+            } else {
+                println("No firewood found!");
+            }
+        }
+
+        if (needMilk) {
+            println("Need milk, searching...");
+            EntityResultSet<SceneObject> milkResults = SceneObjectQuery.newQuery()
+                    .name("Milk")
+                    .option("Take")
+                    .results();
+
+            SceneObject milk = milkResults.nearest();
+            if (milk != null) {
+                println("Found milk at: " + milk.getCoordinate());
+                milk.interact("Take");
+                Execution.delayUntil(5000, () -> Backpack.contains("Milk"));
+                needMilk = false;
+                println("Got milk: " + Backpack.contains("Milk"));
+                return;
+            } else {
+                println("No milk found!");
+            }
+        }
+
+        if (needSugar) {
+            println("Need sugar, searching...");
+            EntityResultSet<SceneObject> sugarResults = SceneObjectQuery.newQuery()
+                    .name("Sugar")
+                    .option("Take")
+                    .results();
+
+            SceneObject sugar = sugarResults.nearest();
+            if (sugar != null) {
+                println("Found sugar at: " + sugar.getCoordinate());
+                sugar.interact("Take");
+                Execution.delayUntil(5000, () -> Backpack.contains("Sugar"));
+                needSugar = false;
+                println("Got sugar: " + Backpack.contains("Sugar"));
+                return;
+            } else {
+                println("No sugar found!");
+            }
+        }
+
+        if (needChocolate) {
+            println("Need chocolate, searching...");
+            EntityResultSet<SceneObject> chocolateResults = SceneObjectQuery.newQuery()
+                    .name("Chocolate")
+                    .option("Take")
+                    .results();
+
+            SceneObject chocolate = chocolateResults.nearest();
+            if (chocolate != null) {
+                println("Found chocolate at: " + chocolate.getCoordinate());
+                chocolate.interact("Take");
+                Execution.delayUntil(5000, () -> Backpack.contains("Chocolate chunks"));
+                needChocolate = false;
+                println("Got chocolate: " + Backpack.contains("Chocolate chunks"));
+                return;
+            } else {
+                println("No chocolate found!");
+            }
+        }
+
+        // Update last animation time if we're currently animating
+        if (player.getAnimationId() != -1) {
+            lastAnimationCookingTime = System.currentTimeMillis();
+            return;
+        }
+
+        long timeSinceLastAnim = System.currentTimeMillis() - lastAnimationCookingTime;
+        if (player.getAnimationId() == -1 && timeSinceLastAnim >= random.nextInt(1000, 2000)) {
+            println("Player is idle and timeout reached (" + timeSinceLastAnim + "ms), searching for pot...");
+            EntityResultSet<SceneObject> potResults = SceneObjectQuery.newQuery()
+                    .id(131826)
+                    .option("Assist Aoife")
+                    .results();
+
+            SceneObject pot = potResults.nearest();
+            if (pot != null) {
+                println("Found pot at: " + pot.getCoordinate());
+                pot.interact("Assist Aoife");
+                println("Interacted with pot");
+                Execution.delay(random.nextLong(600, 1200));
+            } else {
+                println("No pot found!");
+            }
+        }
+    }
+
+    private void handleIceFishing(Player player) {
+        if (Backpack.isFull()) {
+            EntityResultSet<SceneObject> barrelResults = SceneObjectQuery.newQuery()
+                    .name("Barrel of fish")
+                    .option("Deposit all")
+                    .results();
+
+            SceneObject barrel = barrelResults.nearest();
+            if (barrel != null) {
+                println("Depositing fish...");
+                barrel.interact("Deposit all");
+                Execution.delayUntil(5000, () -> !Backpack.isFull());
+                return;
+            }
+        }
+
+        if (player.getAnimationId() == -1 && !Backpack.isFull()) {
+            EntityResultSet<Npc> fishingSpotResults = NpcQuery.newQuery()
+                    .name("Icy fishing spot")
+                    .option("Catch")
+                    .results();
+            Npc fishingSpot = fishingSpotResults.nearest();
+            if (fishingSpot != null) {
+                println("Starting to fish...");
+                fishingSpot.interact("Catch");
+                Execution.delay(random.nextLong(3000, 6000));
+
+            }
+        } else {
+            Execution.delay(random.nextLong(1000, 3000));
+        }
+    }
+
+    private void handleToyCrafting(Player player) {
+
+        if (Backpack.contains(COMPLETE_MARIONETTE)) {
+            EntityResultSet<Npc> maeveResults = NpcQuery.newQuery()
+                    .name("Maeve")
+                    .option("Talk to")
+                    .results();
+
+            Npc maeve = maeveResults.nearest();
+            if (maeve != null) {
+                println("Turning in completed marionettes...");
+                maeve.interact("Talk to");
+                Execution.delay(random.nextLong(2000, 4000));
+            }
+            return;
+        }
+
+        if (Backpack.contains(PAINTED_MARIONETTE) && Backpack.contains("Marionette handle")) {
+            EntityResultSet<SceneObject> finishingBenchResults = SceneObjectQuery.newQuery()
+                    .name("Finishing bench")
+                    .option("Assemble")
+                    .results();
+
+            SceneObject finishingBench = finishingBenchResults.nearest();
+            if (finishingBench != null) {
+                println("Assembling marionettes...");
+                finishingBench.interact("Assemble");
+                Execution.delayUntil(90000, () -> !Backpack.contains(PAINTED_MARIONETTE) || !Backpack.contains("Marionette handle"));
+                Execution.delay(random.nextLong(600, 2000));
+            }
+            return;
+        }
+
+        if (Backpack.contains(UNPAINTED_MARIONETTE)) {
+            EntityResultSet<SceneObject> paintingBenchResults = SceneObjectQuery.newQuery()
+                    .name("Painting bench")
+                    .option("Paint")
+                    .results();
+
+            SceneObject paintingBench = paintingBenchResults.nearest();
+            if (paintingBench != null) {
+                println("Painting marionettes...");
+                paintingBench.interact("Paint");
+                Execution.delayUntil(30000, () -> !Backpack.contains(UNPAINTED_MARIONETTE));
+                Execution.delay(random.nextLong(600, 2000));
+            }
+            return;
+        }
+
+        if (Backpack.contains("Dry fir wood")) {
+            EntityResultSet<SceneObject> carvingBenchResults = SceneObjectQuery.newQuery()
+                    .name("Carving bench")
+                    .option("Carve")
+                    .results();
+
+            SceneObject carvingBench = carvingBenchResults.nearest();
+            if (carvingBench != null) {
+                println("Carving wood...");
+                carvingBench.interact("Carve");
+                Execution.delayUntil(120000, () -> !Backpack.contains("Dry fir wood"));
+                Execution.delay(random.nextLong(600, 2000));
+            }
+            return;
+        }
+
+        if (Backpack.isEmpty()) {
+            EntityResultSet<SceneObject> crateResults = SceneObjectQuery.newQuery()
+                    .name("Crate of wood")
+                    .option("Take from")
+                    .results();
+
+            SceneObject crate = crateResults.nearest();
+            if (crate != null) {
+                println("Taking wood from crate...");
+                crate.interact("Take from");
+                Execution.delayUntil(15000, Backpack::isFull);
+                Execution.delay(random.nextLong(600, 2000));
+            }
+        }
+    }
+
+    private void handleFirWoodcutting(Player player) {
+
+        if (!Backpack.isFull() && player.getAnimationId() == -1) {
+            EntityResultSet<SceneObject> treeResults = SceneObjectQuery.newQuery()
+                    .name("Fir")
+                    .option("Chop down")
+                    .results();
+
+            SceneObject tree = treeResults.nearest();
+            if (tree != null && !tree.isHidden()) {
+                println("Chopping fir tree...");
+                tree.interact("Chop down");
+                Execution.delayUntil(random.nextInt(3000, 6000), Backpack::isFull);
+            }
+        }
+
+        if (Backpack.contains("Fir logs") && Backpack.isFull()) {
+            EntityResultSet<SceneObject> stumpResults = SceneObjectQuery.newQuery()
+                    .name("Log splitting stump")
+                    .option("Split logs")
+                    .results();
+
+            SceneObject stump = stumpResults.nearest();
+            if (stump != null) {
+                println("Splitting fir logs...");
+                stump.interact("Split logs");
+                Execution.delayUntil(90000, () -> !Backpack.contains("Fir logs"));
+                Execution.delay(random.nextLong(600, 2000));
+            }
+            return;
+        }
+        if (Backpack.contains("Split fir logs")) {
+            EntityResultSet<SceneObject> stockpileResults = SceneObjectQuery.newQuery()
+                    .name("Split log stockpile")
+                    .option("Deposit all")
+                    .results();
+
+            SceneObject stockpile = stockpileResults.nearest();
+            if (stockpile != null) {
+                println("Depositing split logs...");
+                stockpile.interact("Deposit all");
+                Execution.delayUntil(10000, () -> !Backpack.contains("Split fir logs"));
+            }
+            return;
+        }
+
+        Execution.delay(random.nextLong(600, 2000));
+    }
+
+    private void handleSnowballFletching(Player player) {
+        EntityResultSet<Npc> smokeyResults = NpcQuery.newQuery()
+                .name("Smokey")
+                .option("Pelt snowball")
+                .results();
+        Npc smokey = smokeyResults.nearest();
+        if (smokey != null) {
+            println("Found Smokey! Equipping snowballs if needed and cooling him...");
+
+            if (!Equipment.contains("Snowball")) {
+                if(Backpack.contains("Snowball")){
+                    Backpack.interact("Snowball", "Wield");
+                }
+            }
+
+            smokey.interact("Pelt snowball");
+            Execution.delay(random.nextLong(1500, 2500));
+            return;
+        }
+
+        if (player.getAnimationId() != -1) {
+            lastSnowballInteraction = System.currentTimeMillis();
+            return;
+        }
+
+        if (System.currentTimeMillis() - lastSnowballInteraction < IDLE_TIMEOUT) {
+            return;
+        }
+
+        EntityResultSet<SceneObject> snowPileResults = SceneObjectQuery.newQuery()
+                .name("Pile of snow")
+                .option("Create snowball")
+                .results();
+
+        SceneObject snowPile = snowPileResults.nearest();
+        if (snowPile != null) {
+            println("Creating snowballs...");
+            snowPile.interact("Create snowball");
+            lastSnowballInteraction = System.currentTimeMillis();
+        }
+    }
     private void handleMaze(Player player) {
         if (!mazeEntranceArea.contains(player.getCoordinate()) && !usedDoor) {
             println("Moving to maze entrance at " + mazeEntranceArea);
@@ -1102,7 +1464,7 @@ public class CoaezHalloweenEvent extends LoopingScript {
     }
 
     @Override
-    public CoaezHalloweenEventGraphicsContext getGraphicsContext() {
+    public CoaezEventGraphicsContext getGraphicsContext() {
         return sgc;
     }
 }

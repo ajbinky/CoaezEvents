@@ -1,2 +1,2 @@
-rootProject.name = "CoaezHalloweenEvent"
+rootProject.name = "CoaezEvents"
 
