@@ -2,6 +2,7 @@ package net.botwithus;
 
 import net.botwithus.api.game.hud.inventories.Bank;
 import net.botwithus.rs3.events.impl.ChatMessageEvent;
+import net.botwithus.rs3.events.impl.InventoryUpdateEvent;
 import net.botwithus.rs3.game.*;
 import net.botwithus.rs3.game.actionbar.ActionBar;
 import net.botwithus.rs3.game.hud.interfaces.Component;
@@ -79,6 +80,7 @@ public class CoaezEvents extends LoopingScript {
         SNOWBALL_FLETCHING,
         ICE_FISHING,
         HOT_CHOCOLATE,
+        DECORATIONS,
         IDLE
     }
 
@@ -128,6 +130,13 @@ public class CoaezEvents extends LoopingScript {
     private static final int COMPLETE_MARIONETTE = 57931;
     private static final int INCOMPLETE_MARIONETTE = 57927;
 
+    private SceneObject CACHED_DECORATION_CRATE = null;
+    private SceneObject CACHED_DECORATION_BENCH = null;
+    private SceneObject CACHED_DECORATION_BOX = null;
+    private boolean isProcessing = false;
+    private long lastProcessStart = 0;
+    private static final long PROCESSING_TIMEOUT = 150000;
+    private boolean receivedFinishedDecoration = false;
 
     enum TransferOptionType {
         ONE(2, 33882205),
@@ -156,7 +165,16 @@ public class CoaezEvents extends LoopingScript {
         super(s, config, scriptDefinition);
         this.config = config;
         subscribe(ChatMessageEvent.class, this::onChatMessage);
+        subscribe(InventoryUpdateEvent.class, this::onInventoryUpdate);
+
         this.sgc = new CoaezEventGraphicsContext(this.getConsole(), this);
+    }
+
+    private void onInventoryUpdate(InventoryUpdateEvent inventoryUpdateEvent) {
+        Item newItem = inventoryUpdateEvent.getNewItem();
+        if (newItem != null && newItem.getId() == 56170) {
+            receivedFinishedDecoration = true;
+        }
     }
 
     private void onChatMessage(ChatMessageEvent chatMessageEvent) {
@@ -226,6 +244,9 @@ public class CoaezEvents extends LoopingScript {
         }
 
         switch (botState) {
+            case DECORATIONS:
+                handleDecorations(player);
+                break;
             case HOT_CHOCOLATE:
                 handleHotChocolate(player);
                 return;
@@ -262,6 +283,94 @@ public class CoaezEvents extends LoopingScript {
             default:
                 Execution.delay(random.nextLong(1000, 3000));
                 break;
+        }
+    }
+
+    private void handleDecorations(Player player) {
+        if (CACHED_DECORATION_CRATE == null || CACHED_DECORATION_BENCH == null || CACHED_DECORATION_BOX == null) {
+            initializeDecorationObjects();
+            return;
+        }
+
+        if (Backpack.contains(56168) && player.getAnimationId() == -1) {
+            receivedFinishedDecoration = false;
+            if (CACHED_DECORATION_BENCH.interact("Create")) {
+                Execution.delayUntil(PROCESSING_TIMEOUT, () -> receivedFinishedDecoration);
+                return;
+            }
+        }
+
+        int finishedCount = 0;
+        for (Item item : Backpack.container().getItems()) {
+            if (item != null && item.getId() == 56170) {
+                finishedCount++;
+            }
+        }
+
+        if (finishedCount >= 26) {
+            CACHED_DECORATION_BOX.interact("Deposit all");
+            Execution.delayUntil(5000, Backpack::isEmpty);
+            return;
+        }
+
+        int totalDecorations = 0;
+        for (Item item : Backpack.container().getItems()) {
+            if (item != null && (item.getId() == 56168 || item.getId() == 56169)) {
+                totalDecorations++;
+            }
+        }
+
+        if (totalDecorations == 0) {
+            while (totalDecorations < 26) {
+                if (CACHED_DECORATION_CRATE.interact("Take from")) {
+                    final int previousCount = totalDecorations;
+                    if (!Execution.delayUntil(random.nextLong(150, 300), () -> {
+                        int newCount = 0;
+                        for (Item item : Backpack.container().getItems()) {
+                            if (item != null && (item.getId() == 56168 || item.getId() == 56169)) {
+                                newCount++;
+                            }
+                        }
+                        return newCount > previousCount;
+                    })) {
+                        println("Failed to receive new decoration in time, retrying...");
+                    }
+                    totalDecorations = 0;
+                    for (Item item : Backpack.container().getItems()) {
+                        if (item != null && (item.getId() == 56168 || item.getId() == 56169)) {
+                            totalDecorations++;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private void initializeDecorationObjects() {
+        if (CACHED_DECORATION_CRATE == null) {
+            EntityResultSet<SceneObject> crateResults = SceneObjectQuery.newQuery()
+                    .name("Crate of unfinished decorations")
+                    .option("Take from")
+                    .results();
+            CACHED_DECORATION_CRATE = crateResults.nearest();
+            println("Decoration crate " + (CACHED_DECORATION_CRATE != null ? "cached successfully!" : "cache failed!"));
+        }
+
+        if (CACHED_DECORATION_BENCH == null) {
+            EntityResultSet<SceneObject> benchResults = SceneObjectQuery.newQuery()
+                    .name("Decoration bench")
+                    .option("Create")
+                    .results();
+            CACHED_DECORATION_BENCH = benchResults.nearest();
+            println("Decoration bench " + (CACHED_DECORATION_BENCH != null ? "cached successfully!" : "cache failed!"));
+        }
+        if(CACHED_DECORATION_BOX == null) {
+            EntityResultSet<SceneObject> boxResults = SceneObjectQuery.newQuery()
+                    .name("Crate of finished decorations")
+                    .option("Deposit all")
+                    .results();
+            CACHED_DECORATION_BOX = boxResults.nearest();
+            println("Crate of finished decorations " + (CACHED_DECORATION_BOX != null ? "cached successfully!" : "cache failed!"));
         }
     }
 
@@ -575,6 +684,8 @@ public class CoaezEvents extends LoopingScript {
 
         Execution.delay(random.nextLong(600, 2000));
     }
+
+
 
     private void initializeSnowPile() {
         if (CACHED_SNOW_PILE == null) {
