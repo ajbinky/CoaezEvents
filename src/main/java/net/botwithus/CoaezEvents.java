@@ -189,7 +189,7 @@ public class CoaezEvents extends LoopingScript {
             println("Cool smokey now");
             coolSmokey = true;
         }
-        else if (message.contains("has already cooled down!")){
+        else if (message.contains("Thank you " + getLocalPlayer().getName())) {
              println("Smokey cooled");
              coolSmokey = false;
         }
