@@ -235,6 +235,13 @@ public class CoaezEventGraphicsContext extends ScriptGraphicsContext {
             coaezHalloweenEvent.getConsole().println("Switched to Hot Chocolate Cooking event.");
         }
         ImGui.Text("Start near the Hot chocolate pot.");
+        ImGui.Separator();
+        if (ImGui.Button("Enable Decoration Making")) {
+            coaezHalloweenEvent.setBotState(CoaezEvents.BotState.DECORATIONS);
+            coaezHalloweenEvent.lastActivityState = CoaezEvents.BotState.DECORATIONS;
+            coaezHalloweenEvent.getConsole().println("Switched to Decoration Making event.");
+        }
+        ImGui.Text("Start near the Decoration benches.");
     }
 
     @Override
