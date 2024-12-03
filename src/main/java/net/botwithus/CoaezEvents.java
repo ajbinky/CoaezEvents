@@ -120,6 +120,9 @@ public class CoaezEvents extends LoopingScript {
     private boolean needSpice = false;
     private long lastSnowballInteraction = -1;
     private long IDLE_TIMEOUT = 3000;
+    private static SceneObject CACHED_SNOW_PILE = null;
+    private boolean coolSmokey;
+
     private static final int UNPAINTED_MARIONETTE = 57928;
     private static final int PAINTED_MARIONETTE = 57929;
     private static final int COMPLETE_MARIONETTE = 57931;
@@ -182,6 +185,15 @@ public class CoaezEvents extends LoopingScript {
             println("Need to add spice!");
             needSpice = true;
         }
+         else if(message.contains("TOO HOT!")){
+            println("Cool smokey now");
+            coolSmokey = true;
+        }
+    }
+    @Override
+    public boolean initialize(){
+        initializeSnowPile();
+        return false;
     }
 
     @Override
@@ -560,25 +572,45 @@ public class CoaezEvents extends LoopingScript {
         Execution.delay(random.nextLong(600, 2000));
     }
 
-    private void handleSnowballFletching(Player player) {
-        EntityResultSet<Npc> smokeyResults = NpcQuery.newQuery()
-                .name("Smokey")
-                .option("Pelt snowball")
-                .results();
-        Npc smokey = smokeyResults.nearest();
-        if (smokey != null) {
-            println("Found Smokey! Equipping snowballs if needed and cooling him...");
-
-            if (!Equipment.contains("Snowball")) {
-                if(Backpack.contains("Snowball")){
-                    Backpack.interact("Snowball", "Wield");
-                }
+    private void initializeSnowPile() {
+        if (CACHED_SNOW_PILE == null) {
+            EntityResultSet<SceneObject> snowPileResults = SceneObjectQuery.newQuery()
+                    .name("Pile of snow")
+                    .option("Create snowball")
+                    .results();
+            CACHED_SNOW_PILE = snowPileResults.nearest();
+            if (CACHED_SNOW_PILE != null) {
+                println("Snow pile cached successfully!");
+            } else {
+                println("Failed to cache snow pile!");
             }
-
-            smokey.interact("Pelt snowball");
-            Execution.delay(random.nextLong(1500, 2500));
-            return;
         }
+    }
+
+    private void handleSnowballFletching(Player player) {
+        if(coolSmokey){
+            EntityResultSet<Npc> smokeyResults = NpcQuery.newQuery()
+                    .name("Smokey")
+                    .option("Pelt snowball")
+                    .results();
+            Npc smokey = smokeyResults.nearest();
+            if (smokey != null) {
+                println("Found Smokey! Equipping snowballs if needed and cooling him...");
+
+                if (!Equipment.contains("Snowball")) {
+                    if(Backpack.contains("Snowball")){
+                        Backpack.interact("Snowball", "Wield");
+                    }
+                }
+
+                smokey.interact("Pelt snowball");
+                Execution.delay(random.nextLong(2400, 3000));
+                return;
+            } else {
+                coolSmokey = false;
+            }
+        }
+
 
         if (player.getAnimationId() != -1) {
             lastSnowballInteraction = System.currentTimeMillis();
@@ -589,15 +621,9 @@ public class CoaezEvents extends LoopingScript {
             return;
         }
 
-        EntityResultSet<SceneObject> snowPileResults = SceneObjectQuery.newQuery()
-                .name("Pile of snow")
-                .option("Create snowball")
-                .results();
-
-        SceneObject snowPile = snowPileResults.nearest();
-        if (snowPile != null) {
+        if (CACHED_SNOW_PILE != null) {
             println("Creating snowballs...");
-            snowPile.interact("Create snowball");
+            CACHED_SNOW_PILE.interact("Create snowball");
             lastSnowballInteraction = System.currentTimeMillis();
         }
     }
