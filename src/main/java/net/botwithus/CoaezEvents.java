@@ -185,9 +185,13 @@ public class CoaezEvents extends LoopingScript {
             println("Need to add spice!");
             needSpice = true;
         }
-         else if(message.contains("TOO HOT!")){
+        else if (message.contains("TOO HOT!")){
             println("Cool smokey now");
             coolSmokey = true;
+        }
+        else if (message.contains("has already cooled down!")){
+             println("Smokey cooled");
+             coolSmokey = false;
         }
     }
     @Override
@@ -606,8 +610,6 @@ public class CoaezEvents extends LoopingScript {
                 smokey.interact("Pelt snowball");
                 Execution.delay(random.nextLong(2400, 3000));
                 return;
-            } else {
-                coolSmokey = false;
             }
         }
 
