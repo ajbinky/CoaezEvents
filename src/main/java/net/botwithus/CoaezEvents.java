@@ -614,8 +614,8 @@ public class CoaezEvents extends LoopingScript {
 
 
         public boolean shouldTurnInComplete() {
-            if (completeCount > 0 && freeSlots < 6) {
-                println("Decision: Turn in completed marionettes (need space for new cycle)");
+            if (completeCount > 0) {
+                println("Decision: Turn in completed marionettes");
                 return true;
             }
             return false;
@@ -630,7 +630,7 @@ public class CoaezEvents extends LoopingScript {
         }
 
         public boolean shouldPaintMarionettes() {
-            if (unpaintedCount > 0 && freeSlots < 6) {
+            if (unpaintedCount > 0) {
                 println("Decision: Paint marionettes (have unpainted)");
                 return true;
             }
@@ -638,7 +638,7 @@ public class CoaezEvents extends LoopingScript {
         }
 
         public boolean shouldCarveWood() {
-            if (woodCount > 6) {
+            if (woodCount > 0) {
                 println("Decision: Carve wood (have " + woodCount + " wood)");
                 return true;
             }
@@ -646,13 +646,10 @@ public class CoaezEvents extends LoopingScript {
         }
 
         public boolean shouldGetWood() {
-            if (woodCount == 0 && unpaintedCount == 0 && paintedCount == 0 && handleCount == 0) {
-                println("Decision: Get wood (no materials or marionettes in progress)");
-                return true;
-            }
-
-            if (freeSlots >= 6 && woodCount < 6) {
-                println("Decision: Get more wood (have space for complete cycle)");
+            if (freeSlots >= 6 && woodCount == 0 &&
+                    unpaintedCount == 0 && paintedCount == 0 &&
+                    handleCount == 0 && completeCount == 0) {
+                println("Decision: Get wood (no materials in progress and have space)");
                 return true;
             }
             return false;
