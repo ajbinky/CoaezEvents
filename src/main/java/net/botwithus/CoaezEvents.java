@@ -128,7 +128,10 @@ public class CoaezEvents extends LoopingScript {
     private static final int UNPAINTED_MARIONETTE = 57928;
     private static final int PAINTED_MARIONETTE = 57929;
     private static final int COMPLETE_MARIONETTE = 57931;
-    private static final int INCOMPLETE_MARIONETTE = 57927;
+    private static final int INCOMPLETE_MARIONETTE3 = 57927;
+    private static final int INCOMPLETE_MARIONETTE = 57925;
+    private static final int INCOMPLETE_MARIONETTE2 = 57926;
+    private static final int MARIONETTE_HANDLE = 57930;
 
     private SceneObject CACHED_DECORATION_CRATE = null;
     private SceneObject CACHED_DECORATION_BENCH = null;
@@ -535,106 +538,268 @@ public class CoaezEvents extends LoopingScript {
         }
     }
 
+    private InventoryState checkInventoryState() {
+        return new InventoryState();
+    }
+
     private void handleToyCrafting(Player player) {
-        if (Backpack.contains(COMPLETE_MARIONETTE)) {
-            EntityResultSet<Npc> maeveResults = NpcQuery.newQuery()
-                    .name("Maeve")
-                    .option("Talk to")
-                    .results();
+        InventoryState state = checkInventoryState();
+        state.logState();
 
-            Npc maeve = maeveResults.nearest();
-            if (maeve != null) {
-                println("Turning in completed marionettes...");
-                maeve.interact("Talk to");
-                Execution.delay(random.nextLong(2000, 4000));
-            }
+        if (state.shouldTurnInComplete()) {
+            handleTurnIn(player);
             return;
         }
 
-        if (Backpack.contains(PAINTED_MARIONETTE) && Backpack.contains("Marionette handle")) {
-            EntityResultSet<SceneObject> finishingBenchResults = SceneObjectQuery.newQuery()
-                    .name("Finishing bench")
-                    .option("Assemble")
-                    .results();
-
-            SceneObject finishingBench = finishingBenchResults.nearest();
-            if (finishingBench != null) {
-                println("Assembling marionettes...");
-                finishingBench.interact("Assemble");
-                Execution.delayUntil(90000, () -> !Backpack.contains(PAINTED_MARIONETTE) || !Backpack.contains("Marionette handle"));
-                Execution.delay(random.nextLong(600, 2000));
-            }
+        if (state.shouldAssembleMarionettes()) {
+            handleAssembly(player);
             return;
         }
 
-        if (Backpack.contains(UNPAINTED_MARIONETTE)) {
-            EntityResultSet<SceneObject> paintingBenchResults = SceneObjectQuery.newQuery()
-                    .name("Painting bench")
-                    .option("Paint")
-                    .results();
-
-            SceneObject paintingBench = paintingBenchResults.nearest();
-            if (paintingBench != null) {
-                println("Painting marionettes...");
-                paintingBench.interact("Paint");
-                Execution.delayUntil(30000, () -> !Backpack.contains(UNPAINTED_MARIONETTE));
-                Execution.delay(random.nextLong(600, 2000));
-            }
+        if (state.shouldPaintMarionettes()) {
+            handlePainting(player);
             return;
         }
 
-        if (Backpack.contains("Dry fir wood")) {
-            EntityResultSet<SceneObject> carvingBenchResults = SceneObjectQuery.newQuery()
-                    .name("Carving bench")
-                    .option("Carve")
-                    .results();
-
-            SceneObject carvingBench = carvingBenchResults.nearest();
-            if (carvingBench != null) {
-                println("Carving wood...");
-                carvingBench.interact("Carve");
-                Execution.delayUntil(120000, () -> !Backpack.contains("Dry fir wood"));
-                Execution.delay(random.nextLong(600, 2000));
-            }
+        if (state.shouldCarveWood()) {
+            handleCarving(player);
             return;
         }
 
-        boolean shouldGetWood = Backpack.isEmpty() || hasOnlySingleMarionette();
-        println("Inventory check - Should get wood: " + shouldGetWood);
-
-        if (shouldGetWood) {
-            EntityResultSet<SceneObject> crateResults = SceneObjectQuery.newQuery()
-                    .name("Crate of wood")
-                    .option("Take from")
-                    .results();
-
-            SceneObject crate = crateResults.nearest();
-            if (crate != null) {
-                println("Taking wood from crate...");
-                crate.interact("Take from");
-                Execution.delayUntil(15000, Backpack::isFull);
-                Execution.delay(random.nextLong(600, 2000));
-            }
+        if (state.shouldGetWood()) {
+            handleGettingWood(player);
+            return;
         }
     }
 
-    private boolean hasOnlySingleMarionette() {
-        int marionettes = 0;
-        for (Item item : Backpack.container().getItems()) {
-            if (item != null) {
-                if (item.getId() == UNPAINTED_MARIONETTE ||
-                        item.getId() == PAINTED_MARIONETTE ||
-                        item.getId() == COMPLETE_MARIONETTE ||
-                        item.getId() == INCOMPLETE_MARIONETTE) {
-                    marionettes++;
-                    println("Found marionette item: " + item.getId());
+    private class InventoryState {
+        final int woodCount;
+        final int unpaintedCount;
+        final int paintedCount;
+        final int handleCount;
+        final int completeCount;
+        final int incompleteCount;
+        final int totalItems;
+        final int freeSlots;
+
+        public InventoryState() {
+            println("Creating new inventory state");
+
+            this.woodCount = countItemsInBackpack("Dry fir wood");
+            this.unpaintedCount = countItemsByIdInBackpack(UNPAINTED_MARIONETTE);
+            this.paintedCount = countItemsByIdInBackpack(PAINTED_MARIONETTE);
+            this.handleCount = countItemsByIdInBackpack(MARIONETTE_HANDLE);
+            this.completeCount = countItemsByIdInBackpack(COMPLETE_MARIONETTE);
+            this.incompleteCount = countItemsByIdInBackpack(INCOMPLETE_MARIONETTE)
+                    + countItemsByIdInBackpack(INCOMPLETE_MARIONETTE2)
+                    + countItemsByIdInBackpack(INCOMPLETE_MARIONETTE3);
+
+            this.totalItems = getTotalItemCount();  // Get the total number of items (excluding free slots)
+            this.freeSlots = getFreeSlots();  // Get the count of free slots explicitly
+        }
+
+
+        public void logState() {
+            println("==== Toy Crafting Inventory State ====");
+            println("Wood: " + woodCount);
+            println("Unpainted: " + unpaintedCount);
+            println("Painted: " + paintedCount);
+            println("Handles: " + handleCount);
+            println("Complete: " + completeCount);
+            println("Incomplete: " + incompleteCount);
+            println("Free slots: " + freeSlots);
+            println("Other items: " + (totalItems - (woodCount + unpaintedCount + paintedCount + handleCount + completeCount + incompleteCount)));
+            println("===================================");
+        }
+
+
+        public boolean shouldTurnInComplete() {
+            if (completeCount > 0 && freeSlots < 6) {
+                println("Decision: Turn in completed marionettes (need space for new cycle)");
+                return true;
+            }
+            return false;
+        }
+
+        public boolean shouldAssembleMarionettes() {
+            if (paintedCount > 0 && handleCount > 0) {
+                println("Decision: Assemble marionettes (have painted + handles)");
+                return true;
+            }
+            return false;
+        }
+
+        public boolean shouldPaintMarionettes() {
+            if (unpaintedCount > 0 && freeSlots < 6) {
+                println("Decision: Paint marionettes (have unpainted)");
+                return true;
+            }
+            return false;
+        }
+
+        public boolean shouldCarveWood() {
+            if (woodCount > 6) {
+                println("Decision: Carve wood (have " + woodCount + " wood)");
+                return true;
+            }
+            return false;
+        }
+
+        public boolean shouldGetWood() {
+            if (woodCount == 0 && unpaintedCount == 0 && paintedCount == 0 && handleCount == 0) {
+                println("Decision: Get wood (no materials or marionettes in progress)");
+                return true;
+            }
+
+            if (freeSlots >= 6 && woodCount < 6) {
+                println("Decision: Get more wood (have space for complete cycle)");
+                return true;
+            }
+            return false;
+        }
+    }
+
+    private void handleTurnIn(Player player) {
+        println("Turning in completed marionettes...");
+        EntityResultSet<Npc> maeveResults = NpcQuery.newQuery()
+                .name("Maeve")
+                .option("Talk to")
+                .results();
+
+        Npc maeve = maeveResults.nearest();
+        if (maeve != null) {
+            maeve.interact("Talk to");
+            Execution.delay(random.nextLong(2000, 4000));
+        }
+    }
+
+    private void handleAssembly(Player player) {
+        println("Starting marionette assembly...");
+        EntityResultSet<SceneObject> finishingBenchResults = SceneObjectQuery.newQuery()
+                .name("Finishing bench")
+                .option("Assemble")
+                .results();
+
+        SceneObject finishingBench = finishingBenchResults.nearest();
+        if (finishingBench != null) {
+            finishingBench.interact("Assemble");
+            Execution.delayUntil(90000, () -> !Backpack.contains(PAINTED_MARIONETTE));
+            Execution.delay(random.nextLong(600, 2000));
+        }
+    }
+
+    private void handlePainting(Player player) {
+        println("Starting marionette painting...");
+        EntityResultSet<SceneObject> paintingBenchResults = SceneObjectQuery.newQuery()
+                .name("Painting bench")
+                .option("Paint")
+                .results();
+
+        SceneObject paintingBench = paintingBenchResults.nearest();
+        if (paintingBench != null) {
+            paintingBench.interact("Paint");
+            Execution.delayUntil(30000, () -> !Backpack.contains(UNPAINTED_MARIONETTE));
+            Execution.delay(random.nextLong(600, 2000));
+        }
+    }
+
+    private void handleCarving(Player player) {
+        println("Starting wood carving...");
+        EntityResultSet<SceneObject> carvingBenchResults = SceneObjectQuery.newQuery()
+                .name("Carving bench")
+                .option("Carve")
+                .results();
+
+        SceneObject carvingBench = carvingBenchResults.nearest();
+        if (carvingBench != null) {
+            carvingBench.interact("Carve");
+            Execution.delayUntil(120000, () -> !Backpack.contains("Dry fir wood"));
+            Execution.delay(random.nextLong(600, 2000));
+        }
+    }
+
+    private void handleGettingWood(Player player) {
+        println("Getting more wood...");
+        EntityResultSet<SceneObject> crateResults = SceneObjectQuery.newQuery()
+                .name("Crate of wood")
+                .option("Take from")
+                .results();
+
+        SceneObject crate = crateResults.nearest();
+        if (crate != null) {
+            crate.interact("Take from");
+            Execution.delayUntil(15000, () -> Backpack.contains("Dry fir wood") && Backpack.isFull());
+            Execution.delay(random.nextLong(600, 2000));
+        }
+    }
+
+    private int countItemsInBackpack(String itemName) {
+        int count = 0;
+        println("Checking backpack for: " + itemName);
+        List<Item> items = Backpack.container().getItems();
+
+        for (Item item : items.toArray(new Item[0])) {
+            if (item != null && item.getSlot() != -1) {
+                println("Found item in slot " + item.getSlot() + ": ID=" + item.getId());
+
+                if (item.getName() != null && item.getName().equals(itemName)) {
+                    count++;
                 }
             }
         }
 
-        println("Found " + marionettes + " marionette items");
-        return marionettes == 1;
+        println("Total count for " + itemName + ": " + count);
+        return count;
     }
+
+
+
+    private int countItemsByIdInBackpack(int itemId) {
+        int count = 0;
+        println("Checking backpack for ID: " + itemId);
+        List<Item> items = Backpack.container().getItems();
+
+        for (Item item : items.toArray(new Item[0])) {
+            if (item != null && item.getSlot() != -1 && item.getId() == itemId) {  // Exclude items in free slots (-1)
+                count++;
+                println("Found item with ID " + itemId + " in slot " + item.getSlot() + ", current count: " + count);
+            }
+        }
+
+        println("Total count for ID " + itemId + ": " + count);
+        return count;
+    }
+
+
+    private int getTotalItemCount() {
+        int count = 0;
+        println("Counting total items in backpack");
+        List<Item> items = Backpack.container().getItems();
+        for (Item item : items) {
+            if (item != null && item.getId() != -1) {
+                count++;
+                println("Found item in slot " + item.getSlot() + ": ID=" + item.getId());
+            }
+        }
+        println("Total items in backpack: " + count);
+        return count;
+    }
+
+    private int getFreeSlots() {
+        int freeSlotCount = 0;
+        List<Item> items = Backpack.container().getItems();
+
+        for (Item item : items) {
+            if (item != null && item.getId() == -1) {
+                freeSlotCount++;
+            }
+        }
+
+        println("Free slots: " + freeSlotCount);
+        return freeSlotCount;
+    }
+
+
 
     private void handleFirWoodcutting(Player player) {
 
