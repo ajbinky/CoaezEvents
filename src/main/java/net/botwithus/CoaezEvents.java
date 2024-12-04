@@ -295,58 +295,48 @@ public class CoaezEvents extends LoopingScript {
             return;
         }
 
-        if (Backpack.contains(56168) && player.getAnimationId() == -1) {
+        int unfinishedCount = countDecorationItems(56168, 56169);
+        int finishedCount = countDecorationItems(56170);   
+
+        if (unfinishedCount > 0 && player.getAnimationId() == -1) {
             receivedFinishedDecoration = false;
+            println("Creating decorations from unfinished items...");
             if (CACHED_DECORATION_BENCH.interact("Create")) {
                 Execution.delayUntil(PROCESSING_TIMEOUT, () -> receivedFinishedDecoration);
                 return;
             }
         }
 
-        int finishedCount = 0;
-        for (Item item : Backpack.container().getItems()) {
-            if (item != null && item.getId() == 56170) {
-                finishedCount++;
-            }
-        }
-
-        if (finishedCount >= 24) {
+        if (finishedCount >= 20) {
+            println("Depositing finished decorations...");
             CACHED_DECORATION_BOX.interact("Deposit all");
             Execution.delayUntil(5000, Backpack::isEmpty);
             return;
         }
 
-        int totalDecorations = 0;
-        for (Item item : Backpack.container().getItems()) {
-            if (item != null && (item.getId() == 56168 || item.getId() == 56169)) {
-                totalDecorations++;
-            }
-        }
-
-        if (totalDecorations == 0) {
-            while (totalDecorations < 24) {
+        if (unfinishedCount == 0 && !Backpack.isFull()) {
+            println("Collecting unfinished decorations...");
+            while (!Backpack.isFull()) {
                 if (CACHED_DECORATION_CRATE.interact("Take from")) {
-                    final int previousCount = totalDecorations;
-                    if (!Execution.delayUntil(random.nextLong(200, 300), () -> {
-                        int newCount = 0;
-                        for (Item item : Backpack.container().getItems()) {
-                            if (item != null && (item.getId() == 56168 || item.getId() == 56169)) {
-                                newCount++;
-                            }
-                        }
-                        return newCount > previousCount;
-                    })) {
-                        println("Failed to receive new decoration in time, retrying...");
-                    }
-                    totalDecorations = 0;
-                    for (Item item : Backpack.container().getItems()) {
-                        if (item != null && (item.getId() == 56168 || item.getId() == 56169)) {
-                            totalDecorations++;
-                        }
+                    Execution.delay(random.nextLong(200, 400));
+                }
+            }
+            println("Inventory full of unfinished decorations");
+        }
+    }
+
+    private int countDecorationItems(int... itemIds) {
+        int count = 0;
+        for (Item item : Backpack.container().getItems()) {
+            if (item != null) {
+                for (int id : itemIds) {
+                    if (item.getId() == id) {
+                        count++;
                     }
                 }
             }
         }
+        return count;
     }
 
     private void initializeDecorationObjects() {
