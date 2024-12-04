@@ -680,7 +680,7 @@ public class CoaezEvents extends LoopingScript {
         SceneObject finishingBench = finishingBenchResults.nearest();
         if (finishingBench != null) {
             finishingBench.interact("Assemble");
-            Execution.delayUntil(90000, () -> !Backpack.contains(PAINTED_MARIONETTE));
+            Execution.delayUntil(90000, () -> !Backpack.contains(PAINTED_MARIONETTE) || !Backpack.contains(MARIONETTE_HANDLE));
             Execution.delay(random.nextLong(600, 2000));
         }
     }
