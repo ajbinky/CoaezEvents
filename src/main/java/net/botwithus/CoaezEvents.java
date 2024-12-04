@@ -307,7 +307,7 @@ public class CoaezEvents extends LoopingScript {
             }
         }
 
-        if (finishedCount >= 26) {
+        if (finishedCount >= 24) {
             CACHED_DECORATION_BOX.interact("Deposit all");
             Execution.delayUntil(5000, Backpack::isEmpty);
             return;
@@ -321,10 +321,10 @@ public class CoaezEvents extends LoopingScript {
         }
 
         if (totalDecorations == 0) {
-            while (totalDecorations < 26) {
+            while (totalDecorations < 24) {
                 if (CACHED_DECORATION_CRATE.interact("Take from")) {
                     final int previousCount = totalDecorations;
-                    if (!Execution.delayUntil(random.nextLong(150, 300), () -> {
+                    if (!Execution.delayUntil(random.nextLong(200, 300), () -> {
                         int newCount = 0;
                         for (Item item : Backpack.container().getItems()) {
                             if (item != null && (item.getId() == 56168 || item.getId() == 56169)) {
