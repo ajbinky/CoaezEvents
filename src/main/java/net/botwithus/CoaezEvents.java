@@ -646,14 +646,19 @@ public class CoaezEvents extends LoopingScript {
         }
 
         public boolean shouldGetWood() {
-            if (freeSlots >= 6 && woodCount == 0 &&
-                    unpaintedCount == 0 && paintedCount == 0 &&
-                    handleCount == 0 && completeCount == 0) {
-                println("Decision: Get wood (no materials in progress and have space)");
+            // Only get wood if we have space AND can't do any other actions
+            if (freeSlots >= 6 &&
+                    !shouldTurnInComplete() &&
+                    !shouldAssembleMarionettes() &&
+                    !shouldPaintMarionettes() &&
+                    !shouldCarveWood()) {
+                println("Decision: Get wood (can't do other actions and have space)");
                 return true;
             }
             return false;
         }
+
+
     }
 
     private void handleTurnIn(Player player) {
