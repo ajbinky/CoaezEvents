@@ -336,7 +336,6 @@ public class CoaezEvents extends LoopingScript {
                     MiniMenu.interact(ComponentAction.COMPONENT.getType(), 1, -1, 104464438);
 
                     println("Purchased both special boxes!");
-                    buySpecialBox = false;
                 }
             }
         }
