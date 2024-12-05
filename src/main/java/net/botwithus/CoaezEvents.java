@@ -9,6 +9,7 @@ import net.botwithus.rs3.game.hud.interfaces.Component;
 import net.botwithus.rs3.game.hud.interfaces.Interfaces;
 import net.botwithus.rs3.game.minimenu.MiniMenu;
 import net.botwithus.rs3.game.minimenu.actions.ComponentAction;
+import net.botwithus.rs3.game.minimenu.actions.NPCAction;
 import net.botwithus.rs3.game.movement.Movement;
 import net.botwithus.rs3.game.movement.NavPath;
 import net.botwithus.rs3.game.movement.TraverseEvent;
@@ -223,7 +224,6 @@ public class CoaezEvents extends LoopingScript {
     }
     @Override
     public boolean initialize(){
-        initializeSnowPile();
         return true;
     }
 
@@ -318,12 +318,10 @@ public class CoaezEvents extends LoopingScript {
             }
 
             EntityResultSet<Npc> results = NpcQuery.newQuery()
-                    .name("Holly")
-                    .option("Open Christmas Spirit Shop")
+                    .byType(30753)
                     .results();
-
             Npc holly = results.nearest();
-            if (holly != null && holly.interact("Open Christmas Spirit Shop")) {
+            if (holly != null && holly.interact(NPCAction.NPC1)) {
                 println("Opening spirit shop...");
                 if (Execution.delayUntil(5000, () -> Interfaces.isOpen(1594))) {
                     println("Buying first special box...");
@@ -340,6 +338,12 @@ public class CoaezEvents extends LoopingScript {
                     println("Purchased both special boxes!");
                 }
             }
+            currentSpirit = VarManager.getVarbitValue(SPIRIT_VARBIT);
+            if (currentSpirit >= SPIRIT_REQUIRED){
+                println("Didn't spend points, retrying");
+                handleSpiritShop(player);
+            }
+
         }
     }
 
@@ -914,6 +918,10 @@ public class CoaezEvents extends LoopingScript {
     }
 
     private void handleSnowballFletching(Player player) {
+        if (CACHED_SNOW_PILE == null) {
+            initializeSnowPile();
+            return;
+        }
         if(coolSmokey){
             EntityResultSet<Npc> smokeyResults = NpcQuery.newQuery()
                     .name("Smokey")
@@ -924,8 +932,9 @@ public class CoaezEvents extends LoopingScript {
                 println("Found Smokey! Equipping snowballs if needed and cooling him...");
 
                 if (!Equipment.contains("Snowball")) {
-                    if(Backpack.contains("Snowball")){
+                    if (Backpack.contains("Snowball")) {
                         Backpack.interact("Snowball", "Wield");
+                        Execution.delay(random.nextLong(600, 1200));
                     }
                 }
 
@@ -937,18 +946,15 @@ public class CoaezEvents extends LoopingScript {
 
 
         if (player.getAnimationId() != -1) {
-            lastSnowballInteraction = System.currentTimeMillis();
+            println("Player already creating snowballs");
+            Execution.delay(3000);
             return;
         }
 
-        if (System.currentTimeMillis() - lastSnowballInteraction < IDLE_TIMEOUT) {
-            return;
-        }
-
-        if (CACHED_SNOW_PILE != null) {
+        if (CACHED_SNOW_PILE != null && player.getAnimationId() == -1) {
             println("Creating snowballs...");
             CACHED_SNOW_PILE.interact("Create snowball");
-            lastSnowballInteraction = System.currentTimeMillis();
+            Execution.delayUntil(3000, () -> player.getAnimationId() != -1);
         }
     }
     private void handleMaze(Player player) {
