@@ -22,6 +22,7 @@ import net.botwithus.rs3.game.scene.entities.animation.SpotAnimation;
 import net.botwithus.rs3.game.scene.entities.characters.npc.Npc;
 import net.botwithus.rs3.game.scene.entities.characters.player.Player;
 import net.botwithus.rs3.game.scene.entities.object.SceneObject;
+import net.botwithus.rs3.game.vars.VarManager;
 import net.botwithus.rs3.script.Execution;
 import net.botwithus.rs3.script.LoopingScript;
 import net.botwithus.rs3.script.config.ScriptConfig;
@@ -141,6 +142,11 @@ public class CoaezEvents extends LoopingScript {
     private static final long PROCESSING_TIMEOUT = 150000;
     private boolean receivedFinishedDecoration = false;
 
+    public boolean buySpecialBox = false;
+    private static final int SPIRIT_VARBIT = 54788;
+    private static final Coordinate HOLLY_LOCATION = new Coordinate(5219, 9791, 0);
+    private static final int SPIRIT_REQUIRED = 50000;
+
     enum TransferOptionType {
         ONE(2, 33882205),
         FIVE(3, 33882208),
@@ -223,6 +229,7 @@ public class CoaezEvents extends LoopingScript {
 
     @Override
     public void onLoop() {
+        this.loopDelay = 600;
         Player player = getLocalPlayer();
 
         if (player == null || Client.getGameState() != Client.GameState.LOGGED_IN) {
@@ -235,6 +242,9 @@ public class CoaezEvents extends LoopingScript {
         if(result != null) {
             result.interact("Consume");
         }
+
+        handleSpiritShop(player);
+
         if(forceCollectionTurnIn) {
             handleForceCollectionTurnIn(player);
             return;
@@ -286,6 +296,49 @@ public class CoaezEvents extends LoopingScript {
             default:
                 Execution.delay(random.nextLong(1000, 3000));
                 break;
+        }
+    }
+
+    private void handleSpiritShop(Player player) {
+        if (!buySpecialBox) {
+            return;
+        }
+
+        int currentSpirit = VarManager.getVarbitValue(SPIRIT_VARBIT);
+        println("Current spirit: " + currentSpirit);
+
+        if (currentSpirit >= SPIRIT_REQUIRED) {
+            if (!player.getCoordinate().equals(HOLLY_LOCATION)) {
+                println("Moving to Holly...");
+                Movement.walkTo(HOLLY_LOCATION.getX(), HOLLY_LOCATION.getY(), false);
+                Execution.delayUntil(10000, () -> player.getCoordinate().equals(HOLLY_LOCATION));
+                return;
+            }
+
+            EntityResultSet<Npc> results = NpcQuery.newQuery()
+                    .name("Holly")
+                    .option("Open Christmas Spirit Shop")
+                    .results();
+
+            Npc holly = results.nearest();
+            if (holly != null && holly.interact("Open Christmas Spirit Shop")) {
+                println("Opening spirit shop...");
+                if (Execution.delayUntil(5000, () -> Interfaces.isOpen(1594))) {
+                    println("Buying first special box...");
+                    MiniMenu.interact(ComponentAction.COMPONENT.getType(), 1, 10, 104464403);
+                    Execution.delay(random.nextLong(1200, 1800));
+                    MiniMenu.interact(ComponentAction.COMPONENT.getType(), 1, -1, 104464438);
+                    Execution.delay(random.nextLong(1200, 1800));
+
+                    println("Buying second special box...");
+                    MiniMenu.interact(ComponentAction.COMPONENT.getType(), 1, 10, 104464403);
+                    Execution.delay(random.nextLong(1200, 1800));
+                    MiniMenu.interact(ComponentAction.COMPONENT.getType(), 1, -1, 104464438);
+
+                    println("Purchased both special boxes!");
+                    buySpecialBox = false;
+                }
+            }
         }
     }
 

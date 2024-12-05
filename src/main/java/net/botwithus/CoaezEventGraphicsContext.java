@@ -242,6 +242,10 @@ public class CoaezEventGraphicsContext extends ScriptGraphicsContext {
             coaezHalloweenEvent.getConsole().println("Switched to Decoration Making event.");
         }
         ImGui.Text("Start near the Decoration benches.");
+
+        ImGui.Separator();
+        coaezHalloweenEvent.buySpecialBox = ImGui.Checkbox("Buy special boxes", coaezHalloweenEvent.buySpecialBox);
+        ImGui.Text("Will buy 2 special boxes when spirit reaches 50k");
     }
 
     @Override
