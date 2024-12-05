@@ -254,7 +254,11 @@ public class CoaezEvents extends LoopingScript {
         }
 
         handleSpiritShop(player);
-        handleJujuPotions();
+        try {
+            handleJujuPotions();
+        } catch (Exception e) {
+            println("Error in juju potions: " + e.getMessage());
+        }
         if(forceCollectionTurnIn) {
             handleForceCollectionTurnIn(player);
             return;
@@ -311,32 +315,37 @@ public class CoaezEvents extends LoopingScript {
         }
     }
 
-    private void handleJujuPotions() {
-        int fishingValue = VarManager.getVarbitValue(FISHING_JUJU_VARBIT);
-        int woodcuttingValue = VarManager.getVarbitValue(WOODCUTTING_JUJU_VARBIT);
+    private boolean handleJujuPotions() {
+        try {
+            int fishingValue = VarManager.getVarbitValue(FISHING_JUJU_VARBIT);
+            int woodcuttingValue = VarManager.getVarbitValue(WOODCUTTING_JUJU_VARBIT);
 
-        InventoryContainer container = Backpack.container();
+            if (fishingValue == 0 || woodcuttingValue == 0) {
+                InventoryContainer container = Backpack.container();
+                List<Item> items = container.getItems();
 
-        if (fishingValue == 0) {
-            for (Item item : container.getItems()) {
-                if (item != null && FISHING_JUJU_PATTERN.matcher(item.getName()).matches()) {
-                    println("Drinking fishing juju potion: " + item.getName());
-                    Backpack.interact(item.getName(), "Drink");
-                    Execution.delay(random.nextLong(600, 1200));
-                    break;
+                if (fishingValue == 0) {
+                    for (Item item : items) {
+                        String itemName = item != null ? item.getName() : null;
+                        if (itemName != null && FISHING_JUJU_PATTERN.matcher(itemName).matches()) {
+                            return Backpack.interact(itemName, "Drink");
+                        }
+                    }
+                }
+
+                if (woodcuttingValue == 0) {
+                    for (Item item : items) {
+                        String itemName = item != null ? item.getName() : null;
+                        if (itemName != null && WOODCUTTING_JUJU_PATTERN.matcher(itemName).matches()) {
+                            return Backpack.interact(itemName, "Drink");
+                        }
+                    }
                 }
             }
-        }
-
-        if (woodcuttingValue == 0) {
-            for (Item item : container.getItems()) {
-                if (item != null && WOODCUTTING_JUJU_PATTERN.matcher(item.getName()).matches()) {
-                    println("Drinking woodcutting juju potion: " + item.getName());
-                    Backpack.interact(item.getName(), "Drink");
-                    Execution.delay(random.nextLong(600, 1200));
-                    break;
-                }
-            }
+            return false;
+        } catch (Exception e) {
+            println("Error in handleJujuPotions: " + e);
+            return false;
         }
     }
     private void handleSpiritShop(Player player) {
