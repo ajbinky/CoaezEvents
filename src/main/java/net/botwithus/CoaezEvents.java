@@ -7,6 +7,7 @@ import net.botwithus.rs3.game.*;
 import net.botwithus.rs3.game.actionbar.ActionBar;
 import net.botwithus.rs3.game.hud.interfaces.Component;
 import net.botwithus.rs3.game.hud.interfaces.Interfaces;
+import net.botwithus.rs3.game.inventories.InventoryContainer;
 import net.botwithus.rs3.game.minimenu.MiniMenu;
 import net.botwithus.rs3.game.minimenu.actions.ComponentAction;
 import net.botwithus.rs3.game.minimenu.actions.NPCAction;
@@ -30,8 +31,10 @@ import net.botwithus.rs3.script.config.ScriptConfig;
 import net.botwithus.internal.scripts.ScriptDefinition;
 import net.botwithus.rs3.game.inventories.Backpack;
 import net.botwithus.rs3.game.inventories.Equipment;
+import net.botwithus.rs3.util.Regex;
 
 import java.util.*;
+import java.util.regex.Pattern;
 
 import static net.botwithus.rs3.game.Client.getLocalPlayer;
 
@@ -151,6 +154,9 @@ public class CoaezEvents extends LoopingScript {
     private static final int FISHING_JUJU_VARBIT = 26030;
     private static final int WOODCUTTING_JUJU_VARBIT = 26029;
     private static final int SECONDS_PER_TICK = 15;
+
+    private static final Pattern FISHING_JUJU_PATTERN = Regex.getPatternForContainsString("Perfect juju fishing potion");
+    private static final Pattern WOODCUTTING_JUJU_PATTERN = Regex.getPatternForContainsString("Perfect juju woodcutting potion");
 
     enum TransferOptionType {
         ONE(2, 33882205),
@@ -309,19 +315,30 @@ public class CoaezEvents extends LoopingScript {
         int fishingValue = VarManager.getVarbitValue(FISHING_JUJU_VARBIT);
         int woodcuttingValue = VarManager.getVarbitValue(WOODCUTTING_JUJU_VARBIT);
 
-        if (fishingValue == 0 && Backpack.contains("Perfect juju fishing potion")) {
-            println("Drinking fishing juju potion");
-            Backpack.interact("Perfect juju fishing potion", "Drink");
-            Execution.delay(random.nextLong(600, 1200));
+        InventoryContainer container = Backpack.container();
+
+        if (fishingValue == 0) {
+            for (Item item : container.getItems()) {
+                if (item != null && FISHING_JUJU_PATTERN.matcher(item.getName()).matches()) {
+                    println("Drinking fishing juju potion: " + item.getName());
+                    Backpack.interact(item.getName(), "Drink");
+                    Execution.delay(random.nextLong(600, 1200));
+                    break;
+                }
+            }
         }
 
-        if (woodcuttingValue == 0 && Backpack.contains("Perfect juju woodcutting potion")) {
-            println("Drinking woodcutting juju potion");
-            Backpack.interact("Perfect juju woodcutting potion", "Drink");
-            Execution.delay(random.nextLong(600, 1200));
+        if (woodcuttingValue == 0) {
+            for (Item item : container.getItems()) {
+                if (item != null && WOODCUTTING_JUJU_PATTERN.matcher(item.getName()).matches()) {
+                    println("Drinking woodcutting juju potion: " + item.getName());
+                    Backpack.interact(item.getName(), "Drink");
+                    Execution.delay(random.nextLong(600, 1200));
+                    break;
+                }
+            }
         }
     }
-
     private void handleSpiritShop(Player player) {
         if (!buySpecialBox) {
             return;
