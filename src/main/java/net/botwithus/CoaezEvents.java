@@ -224,7 +224,7 @@ public class CoaezEvents extends LoopingScript {
     @Override
     public boolean initialize(){
         initializeSnowPile();
-        return false;
+        return true;
     }
 
     @Override
@@ -250,7 +250,9 @@ public class CoaezEvents extends LoopingScript {
             return;
         }
 
-        sgc.saveConfig();
+        if (sgc.hasStateChanged()) {
+            sgc.saveConfig();
+        }
 
         if(useMaizeLootTokens){
             handleMaizeMazeLootTokens();

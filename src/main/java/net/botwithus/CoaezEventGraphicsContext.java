@@ -11,11 +11,70 @@ import static net.botwithus.rs3.script.ScriptConsole.println;
 public class CoaezEventGraphicsContext extends ScriptGraphicsContext {
 
     private final CoaezEvents coaezHalloweenEvent;
-
+    private CoaezEvents.BotState lastBotState;
+    private CoaezEvents.BotState lastActivityBotState;
+    private boolean lastIdentifyAncientRemains;
+    private boolean lastChaseSprite;
+    private int lastAncientRemainsCount;
+    private int lastThievingDelay;
+    private boolean lastHandInTomes;
+    private int lastTomeCount;
+    private boolean lastForceCollectionTurnIn;
+    private boolean lastUseMaizeLootTokens;
+    private boolean lastTurnInCollections;
+    private boolean lastBuySpecialBox;
     public CoaezEventGraphicsContext(ScriptConsole scriptConsole, CoaezEvents script) {
         super(scriptConsole);
         this.coaezHalloweenEvent = script;
         loadConfig();
+
+        lastBotState = coaezHalloweenEvent.botState;
+        lastActivityBotState = coaezHalloweenEvent.lastActivityState;
+        lastIdentifyAncientRemains = coaezHalloweenEvent.identifyAncientRemains;
+        lastChaseSprite = coaezHalloweenEvent.chaseSprite;
+        lastAncientRemainsCount = coaezHalloweenEvent.ancientRemainsCount;
+        lastThievingDelay = coaezHalloweenEvent.thievingDelay;
+        lastHandInTomes = coaezHalloweenEvent.handInTomes;
+        lastTomeCount = coaezHalloweenEvent.tomeCount;
+        lastForceCollectionTurnIn = coaezHalloweenEvent.forceCollectionTurnIn;
+        lastUseMaizeLootTokens = coaezHalloweenEvent.useMaizeLootTokens;
+        lastTurnInCollections = coaezHalloweenEvent.turnInCollections;
+        lastBuySpecialBox = coaezHalloweenEvent.buySpecialBox;
+    }
+
+    public boolean hasStateChanged() {
+        boolean changed = false;
+
+        if (lastBotState != coaezHalloweenEvent.botState ||
+                lastActivityBotState != coaezHalloweenEvent.lastActivityState ||
+                lastIdentifyAncientRemains != coaezHalloweenEvent.identifyAncientRemains ||
+                lastChaseSprite != coaezHalloweenEvent.chaseSprite ||
+                lastAncientRemainsCount != coaezHalloweenEvent.ancientRemainsCount ||
+                lastThievingDelay != coaezHalloweenEvent.thievingDelay ||
+                lastHandInTomes != coaezHalloweenEvent.handInTomes ||
+                lastTomeCount != coaezHalloweenEvent.tomeCount ||
+                lastForceCollectionTurnIn != coaezHalloweenEvent.forceCollectionTurnIn ||
+                lastUseMaizeLootTokens != coaezHalloweenEvent.useMaizeLootTokens ||
+                lastTurnInCollections != coaezHalloweenEvent.turnInCollections ||
+                lastBuySpecialBox != coaezHalloweenEvent.buySpecialBox) {
+
+            lastBotState = coaezHalloweenEvent.botState;
+            lastActivityBotState = coaezHalloweenEvent.lastActivityState;
+            lastIdentifyAncientRemains = coaezHalloweenEvent.identifyAncientRemains;
+            lastChaseSprite = coaezHalloweenEvent.chaseSprite;
+            lastAncientRemainsCount = coaezHalloweenEvent.ancientRemainsCount;
+            lastThievingDelay = coaezHalloweenEvent.thievingDelay;
+            lastHandInTomes = coaezHalloweenEvent.handInTomes;
+            lastTomeCount = coaezHalloweenEvent.tomeCount;
+            lastForceCollectionTurnIn = coaezHalloweenEvent.forceCollectionTurnIn;
+            lastUseMaizeLootTokens = coaezHalloweenEvent.useMaizeLootTokens;
+            lastTurnInCollections = coaezHalloweenEvent.turnInCollections;
+            lastBuySpecialBox = coaezHalloweenEvent.buySpecialBox;
+
+            changed = true;
+        }
+
+        return changed;
     }
 
     public void saveConfig() {
@@ -31,6 +90,8 @@ public class CoaezEventGraphicsContext extends ScriptGraphicsContext {
             config.addProperty("handInTomes", String.valueOf(coaezHalloweenEvent.handInTomes));
             config.addProperty("tomeCount", String.valueOf(coaezHalloweenEvent.tomeCount));
             config.addProperty("forceCollectionTurnIn", String.valueOf(coaezHalloweenEvent.forceCollectionTurnIn));
+            config.addProperty("buySpecialBox", String.valueOf(coaezHalloweenEvent.buySpecialBox));
+
             config.save();
         }
     }
@@ -40,6 +101,11 @@ public class CoaezEventGraphicsContext extends ScriptGraphicsContext {
 
         if (config != null) {
             config.load();
+
+            String buySpecialBoxValue = config.getProperty("buySpecialBox");
+            if (buySpecialBoxValue != null) {
+                coaezHalloweenEvent.buySpecialBox = Boolean.parseBoolean(buySpecialBoxValue);
+            }
 
             String forceCollectionTurnInValue = config.getProperty("forceCollectionTurnIn");
             if (forceCollectionTurnInValue != null) {
