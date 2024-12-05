@@ -307,51 +307,18 @@ public class CoaezEvents extends LoopingScript {
 
     private void handleJujuPotions() {
         int fishingValue = VarManager.getVarbitValue(FISHING_JUJU_VARBIT);
-        println("Fishing juju potion value: " + fishingValue + " (" + (fishingValue * SECONDS_PER_TICK) + " seconds remaining)");
-
         int woodcuttingValue = VarManager.getVarbitValue(WOODCUTTING_JUJU_VARBIT);
-        println("Woodcutting juju potion value: " + woodcuttingValue + " (" + (woodcuttingValue * SECONDS_PER_TICK) + " seconds remaining)");
 
-        if (fishingValue == 0) {
-            ResultSet<Component> fishingResults = ComponentQuery.newQuery(1473)
-                    .componentIndex(5)
-                    .itemName("Perfect juju fishing potion (3)")
-                    .option("Drink")
-                    .results();
-            Component fishingPotion = fishingResults.first();
-
-            if (fishingPotion != null) {
-                println("Found fishing juju potion in inventory interface, drinking...");
-                fishingPotion.interact("Drink");
-                Execution.delay(random.nextLong(600, 1200));
-            } else if (Backpack.contains("Perfect juju fishing potion (3)")) {
-                println("Found fishing juju potion in backpack, drinking...");
-                Backpack.interact("Perfect juju fishing potion (3)", "Drink");
-                Execution.delay(random.nextLong(600, 1200));
-            } else {
-                println("No fishing juju potion found!");
-            }
+        if (fishingValue == 0 && Backpack.contains("Perfect juju fishing potion")) {
+            println("Drinking fishing juju potion");
+            Backpack.interact("Perfect juju fishing potion", "Drink");
+            Execution.delay(random.nextLong(600, 1200));
         }
 
-        if (woodcuttingValue == 0) {
-            ResultSet<Component> woodcuttingResults = ComponentQuery.newQuery(1473)
-                    .componentIndex(5)
-                    .itemName("Perfect juju woodcutting potion (3)")
-                    .option("Drink")
-                    .results();
-            Component woodcuttingPotion = woodcuttingResults.first();
-
-            if (woodcuttingPotion != null) {
-                println("Found woodcutting juju potion in inventory interface, drinking...");
-                woodcuttingPotion.interact("Drink");
-                Execution.delay(random.nextLong(600, 1200));
-            } else if (Backpack.contains("Perfect juju woodcutting potion (3)")) {
-                println("Found woodcutting juju potion in backpack, drinking...");
-                Backpack.interact("Perfect juju woodcutting potion (3)", "Drink");
-                Execution.delay(random.nextLong(600, 1200));
-            } else {
-                println("No woodcutting juju potion found!");
-            }
+        if (woodcuttingValue == 0 && Backpack.contains("Perfect juju woodcutting potion")) {
+            println("Drinking woodcutting juju potion");
+            Backpack.interact("Perfect juju woodcutting potion", "Drink");
+            Execution.delay(random.nextLong(600, 1200));
         }
     }
 
