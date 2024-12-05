@@ -148,6 +148,10 @@ public class CoaezEvents extends LoopingScript {
     private static final Coordinate HOLLY_LOCATION = new Coordinate(5219, 9791, 0);
     private static final int SPIRIT_REQUIRED = 50000;
 
+    private static final int FISHING_JUJU_VARBIT = 26030;
+    private static final int WOODCUTTING_JUJU_VARBIT = 26029;
+    private static final int SECONDS_PER_TICK = 15;
+
     enum TransferOptionType {
         ONE(2, 33882205),
         FIVE(3, 33882208),
@@ -244,7 +248,7 @@ public class CoaezEvents extends LoopingScript {
         }
 
         handleSpiritShop(player);
-
+        handleJujuPotions();
         if(forceCollectionTurnIn) {
             handleForceCollectionTurnIn(player);
             return;
@@ -298,6 +302,56 @@ public class CoaezEvents extends LoopingScript {
             default:
                 Execution.delay(random.nextLong(1000, 3000));
                 break;
+        }
+    }
+
+    private void handleJujuPotions() {
+        int fishingValue = VarManager.getVarbitValue(FISHING_JUJU_VARBIT);
+        println("Fishing juju potion value: " + fishingValue + " (" + (fishingValue * SECONDS_PER_TICK) + " seconds remaining)");
+
+        int woodcuttingValue = VarManager.getVarbitValue(WOODCUTTING_JUJU_VARBIT);
+        println("Woodcutting juju potion value: " + woodcuttingValue + " (" + (woodcuttingValue * SECONDS_PER_TICK) + " seconds remaining)");
+
+        if (fishingValue == 0) {
+            ResultSet<Component> fishingResults = ComponentQuery.newQuery(1473)
+                    .componentIndex(5)
+                    .itemName("Perfect juju fishing potion (3)")
+                    .option("Drink")
+                    .results();
+            Component fishingPotion = fishingResults.first();
+
+            if (fishingPotion != null) {
+                println("Found fishing juju potion in inventory interface, drinking...");
+                fishingPotion.interact("Drink");
+                Execution.delay(random.nextLong(600, 1200));
+            } else if (Backpack.contains("Perfect juju fishing potion (3)")) {
+                println("Found fishing juju potion in backpack, drinking...");
+                Backpack.interact("Perfect juju fishing potion (3)", "Drink");
+                Execution.delay(random.nextLong(600, 1200));
+            } else {
+                println("No fishing juju potion found!");
+            }
+        }
+
+        if (woodcuttingValue == 0) {
+            ResultSet<Component> woodcuttingResults = ComponentQuery.newQuery(1473)
+                    .componentIndex(5)
+                    .itemName("Perfect juju woodcutting potion (3)")
+                    .option("Drink")
+                    .results();
+            Component woodcuttingPotion = woodcuttingResults.first();
+
+            if (woodcuttingPotion != null) {
+                println("Found woodcutting juju potion in inventory interface, drinking...");
+                woodcuttingPotion.interact("Drink");
+                Execution.delay(random.nextLong(600, 1200));
+            } else if (Backpack.contains("Perfect juju woodcutting potion (3)")) {
+                println("Found woodcutting juju potion in backpack, drinking...");
+                Backpack.interact("Perfect juju woodcutting potion (3)", "Drink");
+                Execution.delay(random.nextLong(600, 1200));
+            } else {
+                println("No woodcutting juju potion found!");
+            }
         }
     }
 
