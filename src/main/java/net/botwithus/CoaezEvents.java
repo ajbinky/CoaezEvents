@@ -361,7 +361,6 @@ public class CoaezEvents extends LoopingScript {
                 println("Moving to Holly...");
                 Movement.walkTo(HOLLY_LOCATION.getX(), HOLLY_LOCATION.getY(), false);
                 Execution.delayUntil(10000, () -> player.getCoordinate().equals(HOLLY_LOCATION));
-                return;
             }
 
             EntityResultSet<Npc> results = NpcQuery.newQuery()
