@@ -904,6 +904,7 @@ public class CoaezEvents extends LoopingScript {
             EntityResultSet<SceneObject> treeResults = SceneObjectQuery.newQuery()
                     .name("Fir")
                     .option("Chop down")
+                    .hidden(false)
                     .results();
 
             SceneObject tree = treeResults.nearest();
@@ -911,6 +912,7 @@ public class CoaezEvents extends LoopingScript {
                 println("Chopping fir tree...");
                 tree.interact("Chop down");
                 Execution.delayUntil(random.nextInt(3000, 6000), Backpack::isFull);
+                return;
             }
         }
 
@@ -926,8 +928,8 @@ public class CoaezEvents extends LoopingScript {
                 stump.interact("Split logs");
                 Execution.delayUntil(90000, () -> !Backpack.contains("Fir logs"));
                 Execution.delay(random.nextLong(600, 2000));
+                return;
             }
-            return;
         }
         if (Backpack.contains("Split fir logs")) {
             EntityResultSet<SceneObject> stockpileResults = SceneObjectQuery.newQuery()
@@ -940,8 +942,8 @@ public class CoaezEvents extends LoopingScript {
                 println("Depositing split logs...");
                 stockpile.interact("Deposit all");
                 Execution.delayUntil(10000, () -> !Backpack.contains("Split fir logs"));
+                return;
             }
-            return;
         }
 
         Execution.delay(random.nextLong(600, 2000));
