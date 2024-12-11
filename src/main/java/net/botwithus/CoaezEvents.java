@@ -87,8 +87,8 @@ public class CoaezEvents extends LoopingScript {
     private static final Pattern[] PRESENT_PATTERNS = {
             Pattern.compile("Blue Christmas Present"),
             Pattern.compile("White Christmas Present"),
-            Pattern.compile("Green Christmas Present"),
-            Pattern.compile("Red Christmas Present")
+            Pattern.compile("Purple Christmas Present"),
+            Pattern.compile("Gold Christmas Present")
     };
 
     public final Map<String, Integer> skillActions = new HashMap<>();
