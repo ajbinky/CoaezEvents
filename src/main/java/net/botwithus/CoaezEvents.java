@@ -70,6 +70,30 @@ public class CoaezEvents extends LoopingScript {
     private static final int SKARAXXI = 31304;
     private static final Coordinate ENTRANCE_MIN = new Coordinate(698, 1726, 0);
     private static final Coordinate ENTRANCE_MAX = new Coordinate(703, 1727, 0);
+    private static final Pattern[] XP_LAMP_PATTERNS = {
+            Pattern.compile("Small XP lamp"),
+            Pattern.compile("Medium XP lamp"),
+            Pattern.compile("Large XP lamp"),
+            Pattern.compile("Huge XP lamp")
+    };
+
+    private static final Pattern[] BONUS_XP_PATTERNS = {
+            Pattern.compile("Bonus XP star \\(small\\)"),
+            Pattern.compile("Bonus XP star \\(medium\\)"),
+            Pattern.compile("Bonus XP star \\(large\\)"),
+            Pattern.compile("Bonus XP star \\(huge\\)")
+    };
+
+    private static final Pattern[] PRESENT_PATTERNS = {
+            Pattern.compile("Blue Christmas Present"),
+            Pattern.compile("White Christmas Present"),
+            Pattern.compile("Purple Christmas Present"),
+            Pattern.compile("Gold Christmas Present")
+    };
+
+    public final Map<String, Integer> skillActions = new HashMap<>();
+    private int selectedSkillActionId = 82772036; // Default to Archaeology
+    private final Map<Integer, Integer> confirmationIndices = new HashMap<>();
 
     public boolean forceCollectionTurnIn = false;
 
@@ -86,6 +110,7 @@ public class CoaezEvents extends LoopingScript {
         ICE_FISHING,
         HOT_CHOCOLATE,
         DECORATIONS,
+        BOX_REDEMPTION,
         IDLE
     }
 
@@ -186,7 +211,36 @@ public class CoaezEvents extends LoopingScript {
         this.config = config;
         subscribe(ChatMessageEvent.class, this::onChatMessage);
         subscribe(InventoryUpdateEvent.class, this::onInventoryUpdate);
-
+        initializeConfirmationIndices();
+        skillActions.put("Attack", 82771982);
+        skillActions.put("Constitution", 82771984);
+        skillActions.put("Mining", 82771986);
+        skillActions.put("Strength", 82771988);
+        skillActions.put("Agility", 82771990);
+        skillActions.put("Smithing", 82771992);
+        skillActions.put("Defense", 82771994);
+        skillActions.put("Herblore", 82771996);
+        skillActions.put("Fishing", 82771998);
+        skillActions.put("Ranged", 82772000);
+        skillActions.put("Thieving", 82772002);
+        skillActions.put("Cooking", 82772004);
+        skillActions.put("Prayer", 82772006);
+        skillActions.put("Crafting", 82772008);
+        skillActions.put("Firemaking", 82772010);
+        skillActions.put("Magic", 82772012);
+        skillActions.put("Fletching", 82772014);
+        skillActions.put("Woodcutting", 82772016);
+        skillActions.put("Runecrafting", 82772018);
+        skillActions.put("Slayer", 82772020);
+        skillActions.put("Farming", 82772022);
+        skillActions.put("Construction", 82772024);
+        skillActions.put("Hunter", 82772026);
+        skillActions.put("Summoning", 82772028);
+        skillActions.put("Dungeoneering", 82772030);
+        skillActions.put("Divination", 82772032);
+        skillActions.put("Invention", 82772034);
+        skillActions.put("Archaeology", 82772036);
+        skillActions.put("Necromancy", 82772037);
         this.sgc = new CoaezEventGraphicsContext(this.getConsole(), this);
     }
 
@@ -273,6 +327,9 @@ public class CoaezEvents extends LoopingScript {
         }
 
         switch (botState) {
+            case BOX_REDEMPTION:
+                handleBoxRedemption(player);
+                break;
             case DECORATIONS:
                 handleDecorations(player);
                 break;
@@ -312,6 +369,144 @@ public class CoaezEvents extends LoopingScript {
             default:
                 Execution.delay(random.nextLong(1000, 3000));
                 break;
+        }
+    }
+
+    private void handleBoxRedemption(Player player) {
+        if (getFreeSlots() <= 3) {
+            handleXPItems();
+            return;
+        }
+
+        boolean openedAny = false;
+        for (Pattern presentPattern : PRESENT_PATTERNS) {
+            ResultSet<Component> presentResults = ComponentQuery.newQuery(1473)
+                    .componentIndex(5)
+                    .itemName(presentPattern)
+                    .option("Open")
+                    .results();
+
+            Component present = presentResults.first();
+            if (present != null) {
+                println("Opening " + present.getText() + "...");
+                present.interact("Open");
+                openedAny = true;
+                break;
+            }
+        }
+
+        if (!openedAny && getFreeSlots() < 24) {
+            handleBanking();
+        }
+    }
+
+    private void handleXPItems() {
+        // Handle XP Lamps
+        for (Pattern lampPattern : XP_LAMP_PATTERNS) {
+            ResultSet<Component> lampResults = ComponentQuery.newQuery(1473)
+                    .componentIndex(5)
+                    .itemName(lampPattern)
+                    .option("Rub")
+                    .results();
+
+            Component lamp = lampResults.first();
+            if (lamp != null) {
+                println("Using " + lamp.getText() + "...");
+                if (lamp.interact("Rub")) {
+                    boolean interfaceOpen = Execution.delayUntil(5000, () -> Interfaces.isOpen(678) || Interfaces.isOpen(1263));
+                    if (interfaceOpen) {
+                        println("Selecting skill with action ID: " + selectedSkillActionId);
+                        MiniMenu.interact(ComponentAction.COMPONENT.getType(), 1, -1, selectedSkillActionId);
+                        Execution.delay(random.nextLong(600, 1200));
+
+                        println("Selecting use all option");
+                        MiniMenu.interact(ComponentAction.DIALOGUE.getType(), 0, -1, 44433427);
+                        Execution.delay(random.nextLong(600, 1200));
+
+                        println("Using confirmation index for final confirmation");
+                        MiniMenu.interact(ComponentAction.DIALOGUE.getType(), 0, confirmationIndices.get(selectedSkillActionId), 82772042);
+                        Execution.delay(random.nextLong(600, 1200));
+                    }
+                }
+            }
+        }
+
+        for (Pattern starPattern : BONUS_XP_PATTERNS) {
+            ResultSet<Component> starResults = ComponentQuery.newQuery(1473)
+                    .componentIndex(5)
+                    .itemName(starPattern)
+                    .option("Choose skill")
+                    .results();
+
+            Component star = starResults.first();
+            if (star != null) {
+                println("Using " + star.getText() + "...");
+                if (star.interact("Choose skill")) {
+                    boolean interfaceOpen = Execution.delayUntil(5000, () -> Interfaces.isOpen(678) || Interfaces.isOpen(1263));
+                    if (interfaceOpen) {
+                        println("Selecting skill with action ID: " + selectedSkillActionId);
+                        MiniMenu.interact(ComponentAction.COMPONENT.getType(), 1, -1, selectedSkillActionId);
+                        Execution.delay(random.nextLong(600, 1200));
+
+                        println("Selecting use all option");
+                        MiniMenu.interact(ComponentAction.DIALOGUE.getType(), 0, -1, 44433427);
+                        Execution.delay(random.nextLong(600, 1200));
+
+                        println("Using confirmation index for final confirmation");
+                        MiniMenu.interact(ComponentAction.DIALOGUE.getType(), 0, confirmationIndices.get(selectedSkillActionId), 82772042);
+                        Execution.delay(random.nextLong(600, 1200));
+                    }
+                }
+            }
+        }
+
+        if (getFreeSlots() < 24) {
+            handleBanking();
+        }
+    }
+
+
+    private void initializeConfirmationIndices() {
+        confirmationIndices.put(82771982, 1);  // Attack
+        confirmationIndices.put(82771984, 6);  // Constitution
+        confirmationIndices.put(82771986, 13); // Mining
+        confirmationIndices.put(82771988, 2);  // Strength
+        confirmationIndices.put(82771990, 8);  // Agility
+        confirmationIndices.put(82771992, 14); // Smithing
+        confirmationIndices.put(82771994, 5);  // Defense
+        confirmationIndices.put(82771996, 9);  // Herblore
+        confirmationIndices.put(82771998, 15); // Fishing
+        confirmationIndices.put(82772000, 3);  // Ranged
+        confirmationIndices.put(82772002, 10); // Thieving
+        confirmationIndices.put(82772004, 16); // Cooking
+        confirmationIndices.put(82772006, 7);  // Prayer
+        confirmationIndices.put(82772008, 11); // Crafting
+        confirmationIndices.put(82772010, 17); // Firemaking
+        confirmationIndices.put(82772012, 4);  // Magic
+        confirmationIndices.put(82772014, 19); // Fletching
+        confirmationIndices.put(82772016, 18); // Woodcutting
+        confirmationIndices.put(82772018, 12); // Runecrafting
+        confirmationIndices.put(82772020, 20); // Slayer
+        confirmationIndices.put(82772022, 21); // Farming
+        confirmationIndices.put(82772024, 22); // Construction
+        confirmationIndices.put(82772026, 23); // Hunter
+        confirmationIndices.put(82772028, 24); // Summoning
+        confirmationIndices.put(82772030, 25); // Dungeoneering
+        confirmationIndices.put(82772032, 26); // Divination
+        confirmationIndices.put(82772034, 27); // Invention
+        confirmationIndices.put(82772036, 28); // Archaeology
+        confirmationIndices.put(82772037, 29); // Necromancy
+    }
+
+    private void handleBanking() {
+        println("Banking items...");
+        if(!Bank.isOpen()){
+            Bank.open();
+        }
+        if (Execution.delayUntil(5000, Bank::isOpen)) {
+            Bank.depositAll();
+            Execution.delay(random.nextLong(600, 1200));
+            Bank.close();
         }
     }
 
@@ -400,7 +595,7 @@ public class CoaezEvents extends LoopingScript {
         }
 
         int unfinishedCount = countDecorationItems(56168, 56169);
-        int finishedCount = countDecorationItems(56170);   
+        int finishedCount = countDecorationItems(56170);
 
         if (unfinishedCount > 0 && player.getAnimationId() == -1) {
             receivedFinishedDecoration = false;
@@ -1915,6 +2110,13 @@ public class CoaezEvents extends LoopingScript {
         return config;
     }
 
+    public void setSelectedSkillActionId(int actionId) {
+        this.selectedSkillActionId = actionId;
+    }
+
+    public int getSelectedSkillActionId() {
+        return selectedSkillActionId;
+    }
     @Override
     public CoaezEventGraphicsContext getGraphicsContext() {
         return sgc;
