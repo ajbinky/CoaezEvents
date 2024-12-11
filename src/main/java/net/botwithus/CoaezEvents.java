@@ -419,12 +419,15 @@ public class CoaezEvents extends LoopingScript {
                         MiniMenu.interact(ComponentAction.COMPONENT.getType(), 1, -1, selectedSkillActionId);
                         Execution.delay(random.nextLong(600, 1200));
 
-                        println("Selecting use all option");
-                        MiniMenu.interact(ComponentAction.DIALOGUE.getType(), 0, -1, 44433427);
-                        Execution.delay(random.nextLong(600, 1200));
+                        if (Interfaces.isOpen(678)) {
+                            println("Selecting use all option");
+                            MiniMenu.interact(ComponentAction.DIALOGUE.getType(), 0, -1, 44433427);
+                            Execution.delay(random.nextLong(600, 1200));
+                        }
 
-                        println("Using confirmation index for final confirmation");
-                        MiniMenu.interact(ComponentAction.DIALOGUE.getType(), 0, confirmationIndices.get(selectedSkillActionId), 82772042);
+                        int confirmIndex = confirmationIndices.get(selectedSkillActionId);
+                        println("Using confirmation index: " + confirmIndex);
+                        MiniMenu.interact(ComponentAction.DIALOGUE.getType(), 0, confirmIndex, 82772042);
                         Execution.delay(random.nextLong(600, 1200));
                     }
                 }
@@ -448,12 +451,15 @@ public class CoaezEvents extends LoopingScript {
                         MiniMenu.interact(ComponentAction.COMPONENT.getType(), 1, -1, selectedSkillActionId);
                         Execution.delay(random.nextLong(600, 1200));
 
-                        println("Selecting use all option");
-                        MiniMenu.interact(ComponentAction.DIALOGUE.getType(), 0, -1, 44433427);
-                        Execution.delay(random.nextLong(600, 1200));
+                        if (Interfaces.isOpen(678)) {
+                            println("Selecting use all option");
+                            MiniMenu.interact(ComponentAction.DIALOGUE.getType(), 0, -1, 44433427);
+                            Execution.delay(random.nextLong(600, 1200));
+                        }
 
-                        println("Using confirmation index for final confirmation");
-                        MiniMenu.interact(ComponentAction.DIALOGUE.getType(), 0, confirmationIndices.get(selectedSkillActionId), 82772042);
+                        int confirmIndex = confirmationIndices.get(selectedSkillActionId);
+                        println("Using confirmation index: " + confirmIndex);
+                        MiniMenu.interact(ComponentAction.DIALOGUE.getType(), 0, confirmIndex, 82772042);
                         Execution.delay(random.nextLong(600, 1200));
                     }
                 }
