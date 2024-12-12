@@ -293,7 +293,6 @@ public class CoaezEvents extends LoopingScript {
 
     @Override
     public void onLoop() {
-        this.loopDelay = 600;
         Player player = getLocalPlayer();
 
         if (player == null || Client.getGameState() != Client.GameState.LOGGED_IN) {
@@ -417,18 +416,18 @@ public class CoaezEvents extends LoopingScript {
                     if (interfaceOpen) {
                         println("Selecting skill with action ID: " + selectedSkillActionId);
                         MiniMenu.interact(ComponentAction.COMPONENT.getType(), 1, -1, selectedSkillActionId);
-                        Execution.delay(random.nextLong(600, 1200));
+                        Execution.delay(random.nextLong(800, 1400));
 
                         if (Interfaces.isOpen(678)) {
                             println("Selecting use all option");
                             MiniMenu.interact(ComponentAction.DIALOGUE.getType(), 0, -1, 44433427);
-                            Execution.delay(random.nextLong(600, 1200));
+                            Execution.delay(random.nextLong(800, 1400));
                         }
 
                         int confirmIndex = confirmationIndices.get(selectedSkillActionId);
                         println("Using confirmation index: " + confirmIndex);
                         MiniMenu.interact(ComponentAction.DIALOGUE.getType(), 0, confirmIndex, 82772042);
-                        Execution.delay(random.nextLong(600, 1200));
+                        Execution.delay(random.nextLong(800, 1400));
                     }
                 }
             }
@@ -449,18 +448,18 @@ public class CoaezEvents extends LoopingScript {
                     if (interfaceOpen) {
                         println("Selecting skill with action ID: " + selectedSkillActionId);
                         MiniMenu.interact(ComponentAction.COMPONENT.getType(), 1, -1, selectedSkillActionId);
-                        Execution.delay(random.nextLong(600, 1200));
+                        Execution.delay(random.nextLong(800, 1400));
 
                         if (Interfaces.isOpen(678)) {
                             println("Selecting use all option");
                             MiniMenu.interact(ComponentAction.DIALOGUE.getType(), 0, -1, 44433427);
-                            Execution.delay(random.nextLong(600, 1200));
+                            Execution.delay(random.nextLong(800, 1200));
                         }
 
                         int confirmIndex = confirmationIndices.get(selectedSkillActionId);
                         println("Using confirmation index: " + confirmIndex);
                         MiniMenu.interact(ComponentAction.DIALOGUE.getType(), 0, confirmIndex, 82772042);
-                        Execution.delay(random.nextLong(600, 1200));
+                        Execution.delay(random.nextLong(800, 1400));
                     }
                 }
             }
