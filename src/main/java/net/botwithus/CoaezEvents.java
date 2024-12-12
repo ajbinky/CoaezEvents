@@ -1,6 +1,7 @@
 package net.botwithus;
 
 import net.botwithus.api.game.hud.inventories.Bank;
+import net.botwithus.api.util.collection.Pair;
 import net.botwithus.rs3.events.impl.ChatMessageEvent;
 import net.botwithus.rs3.events.impl.InventoryUpdateEvent;
 import net.botwithus.rs3.game.*;
@@ -90,6 +91,12 @@ public class CoaezEvents extends LoopingScript {
             Pattern.compile("Purple Christmas Present"),
             Pattern.compile("Gold Christmas Present")
     };
+
+    private static final int WHITE_PRESENT = 57900;
+    private static final int BLUE_PRESENT = 57901;
+    private static final int PURPLE_PRESENT = 57902;
+    private static final int GREEN_PRESENT = 57939;
+    private static final int GOLD_PRESENT = 57938;
 
     public final Map<String, Integer> skillActions = new HashMap<>();
     private int selectedSkillActionId = 82772036; // Default to Archaeology
@@ -376,36 +383,42 @@ public class CoaezEvents extends LoopingScript {
         PresentInventoryState state = checkPresentInventoryState();
         state.logState();
 
-        if (state.totalPresentCount == 0 && getFreeSlots() < 24) {
+        if (state.totalPresentCount == 0 || getFreeSlots() < 3) {
+            handleXPItems();
             handleBanking();
-            return;
-        }
-
-        if (state.bluePresentsCount > 0) {
-            println("Opening Blue Christmas Present...");
-            Backpack.interact("Blue Christmas Present", "Open");
             return;
         }
 
         if (state.whitePresentsCount > 0) {
             println("Opening White Christmas Present...");
-            Backpack.interact("White Christmas Present", "Open");
+            Backpack.interact(WHITE_PRESENT, "Open");
+            return;
+        }
+
+        if (state.bluePresentsCount > 0) {
+            println("Opening Blue Christmas Present...");
+            Backpack.interact(BLUE_PRESENT, "Open");
             return;
         }
 
         if (state.purplePresentsCount > 0) {
             println("Opening Purple Christmas Present...");
-            Backpack.interact("Purple Christmas Present", "Open");
+            Backpack.interact(PURPLE_PRESENT, "Open");
+            return;
+        }
+
+        if (state.greenPresentsCount > 0) {
+            println("Opening Green Christmas Present...");
+            Backpack.interact(GREEN_PRESENT, "Open");
             return;
         }
 
         if (state.goldPresentsCount > 0) {
             println("Opening Gold Christmas Present...");
-            Backpack.interact("Gold Christmas Present", "Open");
+            Backpack.interact(GOLD_PRESENT, "Open");
             return;
         }
 
-        handleXPItems();
     }
 
     private PresentInventoryState checkPresentInventoryState() {
@@ -413,23 +426,26 @@ public class CoaezEvents extends LoopingScript {
     }
 
     private class PresentInventoryState {
-        final int bluePresentsCount;
         final int whitePresentsCount;
+        final int bluePresentsCount;
         final int purplePresentsCount;
+        final int greenPresentsCount;
         final int goldPresentsCount;
         final int totalPresentCount;
         final int totalItems;
         final int freeSlots;
 
         public PresentInventoryState() {
-            println("Creating new present inventory state");
 
-            this.bluePresentsCount = countItemsInBackpack("Blue Christmas Present");
-            this.whitePresentsCount = countItemsInBackpack("White Christmas Present");
-            this.purplePresentsCount = countItemsInBackpack("Purple Christmas Present");
-            this.goldPresentsCount = countItemsInBackpack("Gold Christmas Present");
+			println("Creating new present inventory state");
 
-            this.totalPresentCount = bluePresentsCount + whitePresentsCount + purplePresentsCount + goldPresentsCount;
+            this.whitePresentsCount = countItemsByIdInBackpack(WHITE_PRESENT); //countItemsByIdInBackpack("White Christmas Present");
+            this.bluePresentsCount = countItemsByIdInBackpack(BLUE_PRESENT); //countItemsByIdInBackpack("Blue Christmas Present");
+            this.purplePresentsCount = countItemsByIdInBackpack(PURPLE_PRESENT); //countItemsByIdInBackpack("Purple Christmas Present");
+            this.greenPresentsCount = countItemsByIdInBackpack(GREEN_PRESENT); //countItemsByIdInBackpack("Green Christmas Present");
+            this.goldPresentsCount = countItemsByIdInBackpack(GOLD_PRESENT); //countItemsByIdInBackpack("Gold Christmas Present");
+
+            this.totalPresentCount = whitePresentsCount + bluePresentsCount + purplePresentsCount + greenPresentsCount + goldPresentsCount;
             this.totalItems = getTotalItemCount();
             this.freeSlots = getFreeSlots();
         }
@@ -518,7 +534,6 @@ public class CoaezEvents extends LoopingScript {
         }
     }
 
-
     private void initializeConfirmationIndices() {
         confirmationIndices.put(82771982, 1);  // Attack
         confirmationIndices.put(82771984, 6);  // Constitution
@@ -596,6 +611,7 @@ public class CoaezEvents extends LoopingScript {
             return false;
         }
     }
+
     private void handleSpiritShop(Player player) {
         if (!buySpecialBox) {
             return;
@@ -1096,8 +1112,6 @@ public class CoaezEvents extends LoopingScript {
         return count;
     }
 
-
-
     private int countItemsByIdInBackpack(int itemId) {
         int count = 0;
         println("Checking backpack for ID: " + itemId);
@@ -1105,7 +1119,7 @@ public class CoaezEvents extends LoopingScript {
 
         for (Item item : items.toArray(new Item[0])) {
             if (item != null && item.getSlot() != -1 && item.getId() == itemId) {  // Exclude items in free slots (-1)
-                count++;
+                count += item.getStackSize();
                 println("Found item with ID " + itemId + " in slot " + item.getSlot() + ", current count: " + count);
             }
         }
@@ -1113,7 +1127,6 @@ public class CoaezEvents extends LoopingScript {
         println("Total count for ID " + itemId + ": " + count);
         return count;
     }
-
 
     private int getTotalItemCount() {
         int count = 0;
@@ -1142,8 +1155,6 @@ public class CoaezEvents extends LoopingScript {
         println("Free slots: " + freeSlotCount);
         return freeSlotCount;
     }
-
-
 
     private void handleFirWoodcutting(Player player) {
 
@@ -1195,8 +1206,6 @@ public class CoaezEvents extends LoopingScript {
 
         Execution.delay(random.nextLong(600, 2000));
     }
-
-
 
     private void initializeSnowPile() {
         if (CACHED_SNOW_PILE == null) {
@@ -1253,6 +1262,7 @@ public class CoaezEvents extends LoopingScript {
             Execution.delayUntil(3000, () -> player.getAnimationId() != -1);
         }
     }
+
     private void handleMaze(Player player) {
         if (!mazeEntranceArea.contains(player.getCoordinate()) && !usedDoor) {
             println("Moving to maze entrance at " + mazeEntranceArea);
@@ -1722,7 +1732,6 @@ public class CoaezEvents extends LoopingScript {
         handleChaseSprite(player);
     }
 
-
     private void handleDialogue() {
         if (Interfaces.isOpen(1189)) {
             MiniMenu.interact(ComponentAction.DIALOGUE.getType(), 0, -1, 77922323);
@@ -1860,8 +1869,6 @@ public class CoaezEvents extends LoopingScript {
         }
     }
 
-
-
     private void interactWithSpotAnimation(Player player, SpotAnimation archaeologySpot) {
         Coordinate spotCoordinate = archaeologySpot.getCoordinate();
         double distanceToSpot = player.getCoordinate().distanceTo(spotCoordinate);
@@ -1898,7 +1905,6 @@ public class CoaezEvents extends LoopingScript {
             Execution.delay(random.nextLong(3000, 5000));
         }
     }
-
 
     private boolean backpackContainsCollectionItems() {
         String[] collectionItems = {
@@ -2146,7 +2152,6 @@ public class CoaezEvents extends LoopingScript {
         }
     }
 
-
     public boolean moveTo(Coordinate location) {
         Player player = getLocalPlayer();
         if (location.distanceTo(player.getCoordinate()) < 1) return true;
@@ -2159,6 +2164,7 @@ public class CoaezEvents extends LoopingScript {
         this.botState = state;
         println("Bot state changed to: " + state);
     }
+
     public ScriptConfig getConfig() {
         return config;
     }
@@ -2170,6 +2176,7 @@ public class CoaezEvents extends LoopingScript {
     public int getSelectedSkillActionId() {
         return selectedSkillActionId;
     }
+
     @Override
     public CoaezEventGraphicsContext getGraphicsContext() {
         return sgc;
