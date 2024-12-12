@@ -293,6 +293,7 @@ public class CoaezEvents extends LoopingScript {
 
     @Override
     public void onLoop() {
+        this.loopDelay = 600;
         Player player = getLocalPlayer();
 
         if (player == null || Client.getGameState() != Client.GameState.LOGGED_IN) {
@@ -372,30 +373,77 @@ public class CoaezEvents extends LoopingScript {
     }
 
     private void handleBoxRedemption(Player player) {
-        if (getFreeSlots() <= 3) {
-            handleXPItems();
+        PresentInventoryState state = checkPresentInventoryState();
+        state.logState();
+
+        if (state.totalPresentCount == 0 && getFreeSlots() < 24) {
+            handleBanking();
             return;
         }
 
-        boolean openedAny = false;
-        for (Pattern presentPattern : PRESENT_PATTERNS) {
-            ResultSet<Component> presentResults = ComponentQuery.newQuery(1473)
-                    .componentIndex(5)
-                    .itemName(presentPattern)
-                    .option("Open")
-                    .results();
-
-            Component present = presentResults.first();
-            if (present != null) {
-                println("Opening " + present.getText() + "...");
-                present.interact("Open");
-                openedAny = true;
-                break;
-            }
+        if (state.bluePresentsCount > 0) {
+            println("Opening Blue Christmas Present...");
+            Backpack.interact("Blue Christmas Present", "Open");
+            return;
         }
 
-        if (!openedAny && getFreeSlots() < 24) {
-            handleBanking();
+        if (state.whitePresentsCount > 0) {
+            println("Opening White Christmas Present...");
+            Backpack.interact("White Christmas Present", "Open");
+            return;
+        }
+
+        if (state.purplePresentsCount > 0) {
+            println("Opening Purple Christmas Present...");
+            Backpack.interact("Purple Christmas Present", "Open");
+            return;
+        }
+
+        if (state.goldPresentsCount > 0) {
+            println("Opening Gold Christmas Present...");
+            Backpack.interact("Gold Christmas Present", "Open");
+            return;
+        }
+
+        handleXPItems();
+    }
+
+    private PresentInventoryState checkPresentInventoryState() {
+        return new PresentInventoryState();
+    }
+
+    private class PresentInventoryState {
+        final int bluePresentsCount;
+        final int whitePresentsCount;
+        final int purplePresentsCount;
+        final int goldPresentsCount;
+        final int totalPresentCount;
+        final int totalItems;
+        final int freeSlots;
+
+        public PresentInventoryState() {
+            println("Creating new present inventory state");
+
+            this.bluePresentsCount = countItemsInBackpack("Blue Christmas Present");
+            this.whitePresentsCount = countItemsInBackpack("White Christmas Present");
+            this.purplePresentsCount = countItemsInBackpack("Purple Christmas Present");
+            this.goldPresentsCount = countItemsInBackpack("Gold Christmas Present");
+
+            this.totalPresentCount = bluePresentsCount + whitePresentsCount + purplePresentsCount + goldPresentsCount;
+            this.totalItems = getTotalItemCount();
+            this.freeSlots = getFreeSlots();
+        }
+
+        public void logState() {
+            println("==== Present Box Inventory State ====");
+            println("Blue presents: " + bluePresentsCount);
+            println("White presents: " + whitePresentsCount);
+            println("Purple presents: " + purplePresentsCount);
+            println("Gold presents: " + goldPresentsCount);
+            println("Total presents: " + totalPresentCount);
+            println("Free slots: " + freeSlots);
+            println("Total items: " + totalItems);
+            println("===================================");
         }
     }
 
