@@ -479,8 +479,8 @@ public class CoaezEvents extends LoopingScript {
                     boolean interfaceOpen = Execution.delayUntil(5000, () -> Interfaces.isOpen(678) || Interfaces.isOpen(1263));
                     Execution.delay(random.nextLong(600, 1200));
                     if (interfaceOpen) {
-                        println("Selecting skill with action ID: " + selectedSkillActionId);
-                        MiniMenu.interact(ComponentAction.COMPONENT.getType(), 1, -1, selectedSkillActionId);
+                        println("Selecting skill with lamp action ID: " + sgc.getLampSkillActionId());
+                        MiniMenu.interact(ComponentAction.COMPONENT.getType(), 1, -1, sgc.getLampSkillActionId());
                         Execution.delay(random.nextLong(800, 1400));
 
                         if (Interfaces.isOpen(678)) {
@@ -489,7 +489,7 @@ public class CoaezEvents extends LoopingScript {
                             Execution.delay(random.nextLong(800, 1400));
                         }
 
-                        int confirmIndex = confirmationIndices.get(selectedSkillActionId);
+                        int confirmIndex = confirmationIndices.get(sgc.getLampSkillActionId());
                         println("Using confirmation index: " + confirmIndex);
                         MiniMenu.interact(ComponentAction.DIALOGUE.getType(), 0, confirmIndex, 82772042);
                         Execution.delay(random.nextLong(800, 1400));
@@ -511,8 +511,8 @@ public class CoaezEvents extends LoopingScript {
                 if (star.interact("Choose skill")) {
                     boolean interfaceOpen = Execution.delayUntil(5000, () -> Interfaces.isOpen(678) || Interfaces.isOpen(1263));
                     if (interfaceOpen) {
-                        println("Selecting skill with action ID: " + selectedSkillActionId);
-                        MiniMenu.interact(ComponentAction.COMPONENT.getType(), 1, -1, selectedSkillActionId);
+                        println("Selecting skill with star action ID: " + sgc.getStarSkillActionId());
+                        MiniMenu.interact(ComponentAction.COMPONENT.getType(), 1, -1, sgc.getStarSkillActionId());
                         Execution.delay(random.nextLong(800, 1400));
 
                         if (Interfaces.isOpen(678)) {
@@ -521,7 +521,7 @@ public class CoaezEvents extends LoopingScript {
                             Execution.delay(random.nextLong(800, 1200));
                         }
 
-                        int confirmIndex = confirmationIndices.get(selectedSkillActionId);
+                        int confirmIndex = confirmationIndices.get(sgc.getStarSkillActionId());
                         println("Using confirmation index: " + confirmIndex);
                         MiniMenu.interact(ComponentAction.DIALOGUE.getType(), 0, confirmIndex, 82772042);
                         Execution.delay(random.nextLong(800, 1400));
