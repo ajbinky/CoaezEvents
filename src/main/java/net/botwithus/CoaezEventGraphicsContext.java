@@ -24,7 +24,8 @@ public class CoaezEventGraphicsContext extends ScriptGraphicsContext {
     private boolean lastTurnInCollections;
     private boolean lastBuySpecialBox;
 
-    private int selectedSkillIndex = 0;
+    private int selectedLampSkillIndex = 0;
+    private int selectedStarSkillIndex = 0;
     private static final String[] skillOptions = {
             "Attack", "Constitution", "Mining", "Strength", "Agility", "Smithing", "Defense",
             "Herblore", "Fishing", "Ranged", "Thieving", "Cooking", "Prayer", "Crafting",
@@ -326,15 +327,27 @@ public class CoaezEventGraphicsContext extends ScriptGraphicsContext {
             coaezHalloweenEvent.lastActivityState = CoaezEvents.BotState.BOX_REDEMPTION;
             coaezHalloweenEvent.getConsole().println("Switched to opening event boxes.");
         }
-        ImGui.Text("Select Skill for Experience Items:");
+
+        ImGui.Text("Select Skill for XP Lamps:");
         ImGui.SetItemWidth(150);
-        int newIndex = ImGui.Combo("##skillOptions", selectedSkillIndex, skillOptions);
-        if (newIndex != selectedSkillIndex) {
-            selectedSkillIndex = newIndex;
-            String selectedSkill = skillOptions[selectedSkillIndex];
+        int newLampIndex = ImGui.Combo("##lampSkillOptions", selectedLampSkillIndex, skillOptions);
+        if (newLampIndex != selectedLampSkillIndex) {
+            selectedLampSkillIndex = newLampIndex;
+            String selectedSkill = skillOptions[selectedLampSkillIndex];
             int actionId = coaezHalloweenEvent.skillActions.get(selectedSkill);
             coaezHalloweenEvent.setSelectedSkillActionId(actionId);
-            coaezHalloweenEvent.getConsole().println("Skill selected: " + selectedSkill + ", Action ID: " + actionId);
+            coaezHalloweenEvent.getConsole().println("Lamp skill selected: " + selectedSkill + ", Action ID: " + actionId);
+        }
+
+        ImGui.Text("Select Skill for Bonus XP Stars:");
+        ImGui.SetItemWidth(150);
+        int newStarIndex = ImGui.Combo("##starSkillOptions", selectedStarSkillIndex, skillOptions);
+        if (newStarIndex != selectedStarSkillIndex) {
+            selectedStarSkillIndex = newStarIndex;
+            String selectedSkill = skillOptions[selectedStarSkillIndex];
+            int actionId = coaezHalloweenEvent.skillActions.get(selectedSkill);
+            coaezHalloweenEvent.setSelectedSkillActionId(actionId);
+            coaezHalloweenEvent.getConsole().println("Star skill selected: " + selectedSkill + ", Action ID: " + actionId);
         }
 
         ImGui.Separator();
@@ -344,5 +357,12 @@ public class CoaezEventGraphicsContext extends ScriptGraphicsContext {
 
     @Override
     public void drawOverlay() {
+    }
+    public int getLampSkillActionId() {
+        return coaezHalloweenEvent.skillActions.get(skillOptions[selectedLampSkillIndex]);
+    }
+
+    public int getStarSkillActionId() {
+        return coaezHalloweenEvent.skillActions.get(skillOptions[selectedStarSkillIndex]);
     }
 }
