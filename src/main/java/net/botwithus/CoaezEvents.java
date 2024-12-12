@@ -389,6 +389,11 @@ public class CoaezEvents extends LoopingScript {
             return;
         }
 
+	if (state.totalPresentCount > 0 && getFreeSlots() < 3) {
+            handleXPItems();
+            handleBanking();
+        }
+
         if (state.whitePresentsCount > 0) {
             println("Opening White Christmas Present...");
             Backpack.interact(WHITE_PRESENT, "Open");
