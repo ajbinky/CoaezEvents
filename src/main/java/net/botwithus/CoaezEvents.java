@@ -288,7 +288,7 @@ public class CoaezEvents extends LoopingScript {
     }
     @Override
     public boolean initialize(){
-        return true;
+        return false;
     }
 
     @Override
