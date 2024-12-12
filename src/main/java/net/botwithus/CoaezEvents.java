@@ -300,7 +300,6 @@ public class CoaezEvents extends LoopingScript {
 
     @Override
     public void onLoop() {
-        this.loopDelay = 600;
         Player player = getLocalPlayer();
 
         if (player == null || Client.getGameState() != Client.GameState.LOGGED_IN) {
@@ -381,11 +380,12 @@ public class CoaezEvents extends LoopingScript {
 
     private void handleBoxRedemption(Player player) {
         PresentInventoryState state = checkPresentInventoryState();
-        state.logState();
 
-        if (state.totalPresentCount == 0 || getFreeSlots() < 3) {
+        if (state.totalPresentCount == 0) {
             handleXPItems();
             handleBanking();
+            botState = BotState.IDLE;
+            setActive(false);
             return;
         }
 
@@ -477,6 +477,7 @@ public class CoaezEvents extends LoopingScript {
                 println("Using " + lamp.getText() + "...");
                 if (lamp.interact("Rub")) {
                     boolean interfaceOpen = Execution.delayUntil(5000, () -> Interfaces.isOpen(678) || Interfaces.isOpen(1263));
+                    Execution.delay(random.nextLong(600, 1200));
                     if (interfaceOpen) {
                         println("Selecting skill with action ID: " + selectedSkillActionId);
                         MiniMenu.interact(ComponentAction.COMPONENT.getType(), 1, -1, selectedSkillActionId);
@@ -571,7 +572,9 @@ public class CoaezEvents extends LoopingScript {
         if(!Bank.isOpen()){
             Bank.open();
         }
-        if (Execution.delayUntil(5000, Bank::isOpen)) {
+        Execution.delayUntil(5000, Bank::isOpen);
+        Execution.delay(random.nextLong(600, 1200));
+        if (Bank.isOpen()) {
             Bank.depositAll();
             Execution.delay(random.nextLong(600, 1200));
             Bank.close();
