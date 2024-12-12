@@ -1255,7 +1255,7 @@ public class CoaezEvents extends LoopingScript {
 
         if (player.getAnimationId() != -1) {
             println("Player already creating snowballs");
-            Execution.delay(3400);
+            Execution.delay(3800);
             return;
         }
 
